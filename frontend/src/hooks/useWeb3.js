@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import Web3DriveConfig from "../utils/Web3Drive.json";
 
 const Web3Context = createContext(null);
+const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || Web3DriveConfig.address;
 
 export const Web3Provider = ({ children }) => {
   const [walletAddress, setWalletAddress] = useState(null);
@@ -21,13 +22,13 @@ export const Web3Provider = ({ children }) => {
 
   // Initialize Contract helper
   const getContractInstance = useCallback((currentSigner) => {
-    if (!Web3DriveConfig || !Web3DriveConfig.address) {
+    if (!Web3DriveConfig || !contractAddress) {
       console.warn("⚠️ Smart contract ABI or address not found! Deploy the contract first.");
       return null;
     }
     try {
       return new ethers.Contract(
-        Web3DriveConfig.address,
+        contractAddress,
         Web3DriveConfig.abi,
         currentSigner
       );
@@ -66,14 +67,69 @@ export const Web3Provider = ({ children }) => {
 
       const browserProvider = new ethers.BrowserProvider(window.ethereum);
       const web3Signer = await browserProvider.getSigner();
-      const network = await browserProvider.getNetwork();
-      const userAddress = accounts[0];
+      let network = await browserProvider.getNetwork();
 
+      const targetChainId = Number(process.env.NEXT_PUBLIC_TARGET_CHAIN_ID || "11155111");
+      const targetChainIdHex = "0x" + targetChainId.toString(16);
+
+      if (Number(network.chainId) !== targetChainId) {
+        try {
+          console.log(`🌐 Requesting network switch to Chain ID ${targetChainId} (${targetChainIdHex})...`);
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: targetChainIdHex }],
+          });
+          // Re-fetch network details after switch
+          network = await browserProvider.getNetwork();
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            try {
+              console.log(`🌐 Adding custom network config for Chain ID ${targetChainId}...`);
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: targetChainIdHex,
+                    chainName: targetChainId === 11155111 ? "Sepolia Test Network" : "Custom Network",
+                    nativeCurrency: {
+                      name: "Ether",
+                      symbol: "ETH",
+                      decimals: 18,
+                    },
+                    rpcUrls: [
+                      targetChainId === 11155111 
+                        ? "https://rpc.ankr.com/eth_sepolia" 
+                        : "http://127.0.0.1:8545"
+                    ],
+                    blockExplorerUrls: [
+                      targetChainId === 11155111 
+                        ? "https://sepolia.etherscan.io" 
+                        : ""
+                    ].filter(Boolean),
+                  },
+                ],
+              });
+              network = await browserProvider.getNetwork();
+            } catch (addError) {
+              console.error("Failed to add network:", addError);
+              throw new Error(`Please manually switch your wallet to Sepolia or target network.`);
+            }
+          } else {
+            console.error("Failed to switch network:", switchError);
+            throw new Error(`Please manually switch your wallet to Sepolia or target network.`);
+          }
+        }
+      }
+
+      const userAddress = accounts[0];
       setWalletAddress(userAddress);
       setSigner(web3Signer);
       setProvider(browserProvider);
       setChainId(network.chainId.toString());
-      setNetworkName(network.name === "unknown" ? "Localhost" : network.name);
+      setNetworkName(
+        network.chainId.toString() === "11155111" ? "Sepolia" :
+        network.name === "unknown" ? "Localhost" : network.name
+      );
       setIsConnected(true);
 
       const contractInst = getContractInstance(web3Signer);
@@ -270,9 +326,9 @@ export const Web3Provider = ({ children }) => {
   const getMyFilesFromChain = async () => {
     if (!contract || !provider) return [];
     try {
-      const code = await provider.getCode(Web3DriveConfig.address);
+      const code = await provider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
-        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${Web3DriveConfig.address} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
+        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${contractAddress} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
         return [];
       }
       const rawFiles = await contract.getMyFiles();
@@ -299,9 +355,9 @@ export const Web3Provider = ({ children }) => {
   const getSharedFilesFromChain = async () => {
     if (!contract || !provider) return [];
     try {
-      const code = await provider.getCode(Web3DriveConfig.address);
+      const code = await provider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
-        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${Web3DriveConfig.address} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
+        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${contractAddress} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
         return [];
       }
       const rawFiles = await contract.getSharedWithMe();
