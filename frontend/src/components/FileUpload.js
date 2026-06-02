@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { encryptFileClientSide } from "../utils/crypto.js";
 import { formatBytes } from "../utils/helpers.js";
 import axios from "axios";
+import { API_URL } from "../utils/config.js";
 import { 
   Upload, 
   Lock, 
@@ -155,7 +156,7 @@ export default function FileUpload({ onUploadSuccess }) {
       const formData = new FormData();
       formData.append("file", uploadBlob, file.name);
 
-      const ipfsResponse = await axios.post("http://localhost:5000/api/ipfs/upload", formData, {
+      const ipfsResponse = await axios.post(`${API_URL}/ipfs/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data"
         }

@@ -7,9 +7,9 @@ import {
   deriveMasterSeedFromSignature, 
   deriveMasterSeedFromEmailAndPassword 
 } from "../utils/crypto.js";
+import { API_URL, BACKEND_URL } from "../utils/config.js";
 
 const AuthContext = createContext(null);
-const API_URL = "http://localhost:5000/api";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -104,8 +104,8 @@ export const AuthProvider = ({ children }) => {
         console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
       } else if (err.request) {
         // The request was made but no response was received (e.g. backend down)
-        errMsg = "Connection Refused: Cannot reach the backend Express API at http://localhost:5000. Please ensure the backend server is running ('npm start' in the backend/ directory).";
-        console.error("❌ [Vault3 Auth] Connection refused by the API server at http://localhost:5000. Is it offline?");
+        errMsg = `Connection Refused: Cannot reach the backend Express API at ${BACKEND_URL}. Please ensure the backend server is running.`;
+        console.error(`❌ [Vault3 Auth] Connection refused by the API server at ${BACKEND_URL}. Is it offline?`);
       } else {
         errMsg = err.message;
       }
@@ -156,8 +156,8 @@ export const AuthProvider = ({ children }) => {
         errMsg = err.response.data?.message || `Server responded with status ${err.response.status}`;
         console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
       } else if (err.request) {
-        errMsg = "Connection Refused: Cannot reach the backend Express API at http://localhost:5000. Please ensure the backend server is running ('npm start' in the backend/ directory).";
-        console.error("❌ [Vault3 Auth] Connection refused by the API server at http://localhost:5000. Is it offline?");
+        errMsg = `Connection Refused: Cannot reach the backend Express API at ${BACKEND_URL}. Please ensure the backend server is running.`;
+        console.error(`❌ [Vault3 Auth] Connection refused by the API server at ${BACKEND_URL}. Is it offline?`);
       } else {
         errMsg = err.message;
       }
@@ -235,8 +235,8 @@ export const AuthProvider = ({ children }) => {
         errMsg = err.response.data?.message || `Server responded with status ${err.response.status}`;
         console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
       } else if (err.request) {
-        errMsg = "Connection Refused: Cannot reach the backend Express API at http://localhost:5000. Please ensure the backend server is running ('npm start' in the backend/ directory).";
-        console.error("❌ [Vault3 Auth] Connection refused by the API server at http://localhost:5000. Is it offline?");
+        errMsg = `Connection Refused: Cannot reach the backend Express API at ${BACKEND_URL}. Please ensure the backend server is running.`;
+        console.error(`❌ [Vault3 Auth] Connection refused by the API server at ${BACKEND_URL}. Is it offline?`);
       } else {
         errMsg = err.message;
       }

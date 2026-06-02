@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { decryptFileClientSide } from "../utils/crypto.js";
 import axios from "axios";
+import { API_URL } from "../utils/config.js";
 import { 
   Download, 
   Share2, 
@@ -50,7 +51,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`📥 Downloading file '${fileName}' (${ipfsHash}) from IPFS...`);
       
       // Hit Express API proxy endpoint to retrieve raw encrypted buffer
-      const response = await axios.get(`http://localhost:5000/api/ipfs/download/${ipfsHash}`, {
+      const response = await axios.get(`${API_URL}/ipfs/download/${ipfsHash}`, {
         responseType: "arraybuffer",
         onDownloadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -118,7 +119,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
     
     try {
       // Fetch buffer
-      const response = await axios.get(`http://localhost:5000/api/ipfs/download/${ipfsHash}`, {
+      const response = await axios.get(`${API_URL}/ipfs/download/${ipfsHash}`, {
         responseType: "arraybuffer"
       });
 

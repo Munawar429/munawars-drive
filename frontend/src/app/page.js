@@ -12,6 +12,7 @@ import ShareModal from "../components/ShareModal.js";
 import { computeFileHash } from "../utils/crypto.js";
 import { formatBytes, formatDate } from "../utils/helpers.js";
 import axios from "axios";
+import { API_URL } from "../utils/config.js";
 import { 
   Folder, 
   Search, 
@@ -131,7 +132,7 @@ export default function Home() {
     if (!isAuthenticated) return;
     setLoadingLogs(true);
     try {
-      const response = await axios.get("http://localhost:5000/api/activity");
+      const response = await axios.get(`${API_URL}/activity`);
       setActivityLogs(response.data.logs || []);
     } catch (e) {
       console.warn("Failed to fetch activity logs from API:", e);

@@ -1,0 +1,7 @@
+node_modules
+data/db_*.json
+data/ipfs_mock
+.env
+npm-debug.log
+.git
+.gitignore
