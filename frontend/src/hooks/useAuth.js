@@ -5,7 +5,11 @@ import axios from "axios";
 import { useWeb3 } from "./useWeb3.js";
 import { 
   deriveMasterSeedFromSignature, 
-  deriveMasterSeedFromEmailAndPassword 
+  deriveMasterSeedFromEmailAndPassword,
+  generateRSAKeyPair,
+  exportKey,
+  wrapPrivateKey,
+  unwrapPrivateKey
 } from "../utils/crypto.js";
 import { API_URL, BACKEND_URL } from "../utils/config.js";
 
@@ -15,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [masterSeed, setMasterSeed] = useState(null);
+  const [rsaPrivateKey, setRsaPrivateKey] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authType, setAuthType] = useState(null); // 'email' or 'wallet'
@@ -42,6 +47,7 @@ export const AuthProvider = ({ children }) => {
       // We store the encrypted master seed in sessionStorage for security
       // (survives tab refreshes, deleted when browser tab is closed).
       const storedSeed = sessionStorage.getItem("w3d_seed");
+      const storedRsaKey = sessionStorage.getItem("w3d_rsa_private_key");
 
       if (storedToken && storedUser && storedSeed) {
         try {
@@ -50,6 +56,7 @@ export const AuthProvider = ({ children }) => {
           setUser(parsedUser);
           setAuthType(storedAuthType);
           setMasterSeed(storedSeed);
+          setRsaPrivateKey(storedRsaKey);
           setAuthHeader(storedToken);
           setIsAuthenticated(true);
         } catch (e) {
@@ -61,6 +68,50 @@ export const AuthProvider = ({ children }) => {
     };
     restoreSession();
   }, []);
+
+  // Helper to initialize RSA OAEP keypair for secure file sharing
+  const initializeUserRSAKeys = async (profile, seed, jwtToken) => {
+    try {
+      let updatedProfile = { ...profile };
+      
+      if (!profile.encryptionPublicKey || !profile.encryptedPrivateKey) {
+        console.log("🔒 [Vault3 Auth] Generating RSA Keypair for secure file sharing...");
+        const keyPair = await generateRSAKeyPair();
+        const publicKeyJson = await exportKey(keyPair.publicKey);
+        const privateKeyJson = await exportKey(keyPair.privateKey);
+        
+        console.log("🔒 [Vault3 Auth] Encrypting RSA Private Key using Master Seed...");
+        const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, seed);
+        
+        console.log("📡 [Vault3 Auth] Registering RSA keys in backend registry...");
+        await axios.post(
+          `${API_URL}/auth/save-keys`,
+          {
+            encryptionPublicKey: publicKeyJson,
+            encryptedPrivateKey: encryptedPrivateKey
+          },
+          {
+            headers: { Authorization: `Bearer ${jwtToken}` }
+          }
+        );
+        
+        sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+        setRsaPrivateKey(privateKeyJson);
+        updatedProfile.encryptionPublicKey = publicKeyJson;
+        updatedProfile.encryptedPrivateKey = encryptedPrivateKey;
+      } else {
+        console.log("🔒 [Vault3 Auth] Decrypting existing RSA Private Key using Master Seed...");
+        const privateKeyJson = await unwrapPrivateKey(profile.encryptedPrivateKey, seed);
+        sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+        setRsaPrivateKey(privateKeyJson);
+      }
+      
+      return updatedProfile;
+    } catch (e) {
+      console.error("❌ [Vault3 Auth] RSA key initialization failed:", e);
+      return profile;
+    }
+  };
 
   // 1. Email/Password Signup
   const registerWithEmail = async (email, password) => {
@@ -80,14 +131,17 @@ export const AuthProvider = ({ children }) => {
       const seed = await deriveMasterSeedFromEmailAndPassword(email, password);
       console.log("🔑 [Vault3 Auth] Master Seed derived successfully!");
 
+      // Initialize RSA Keys
+      const updatedProfile = await initializeUserRSAKeys(profile, seed, jwtToken);
+
       setToken(jwtToken);
-      setUser(profile);
+      setUser(updatedProfile);
       setAuthType("email");
       setMasterSeed(seed);
       setAuthHeader(jwtToken);
       
       localStorage.setItem("w3d_token", jwtToken);
-      localStorage.setItem("w3d_user", JSON.stringify(profile));
+      localStorage.setItem("w3d_user", JSON.stringify(updatedProfile));
       localStorage.setItem("w3d_authtype", "email");
       sessionStorage.setItem("w3d_seed", seed);
 
@@ -134,14 +188,17 @@ export const AuthProvider = ({ children }) => {
       const seed = await deriveMasterSeedFromEmailAndPassword(email, password);
       console.log("🔑 [Vault3 Auth] Master Seed derived successfully!");
 
+      // Initialize RSA Keys
+      const updatedProfile = await initializeUserRSAKeys(profile, seed, jwtToken);
+
       setToken(jwtToken);
-      setUser(profile);
+      setUser(updatedProfile);
       setAuthType("email");
       setMasterSeed(seed);
       setAuthHeader(jwtToken);
 
       localStorage.setItem("w3d_token", jwtToken);
-      localStorage.setItem("w3d_user", JSON.stringify(profile));
+      localStorage.setItem("w3d_user", JSON.stringify(updatedProfile));
       localStorage.setItem("w3d_authtype", "email");
       sessionStorage.setItem("w3d_seed", seed);
 
@@ -213,14 +270,17 @@ export const AuthProvider = ({ children }) => {
       const seed = deriveMasterSeedFromSignature(signature);
       console.log("🔑 [Vault3 Auth] Master Vault Seed derived successfully!");
 
+      // Initialize RSA Keys
+      const updatedProfile = await initializeUserRSAKeys(profile, seed, jwtToken);
+
       setToken(jwtToken);
-      setUser(profile);
+      setUser(updatedProfile);
       setAuthType("wallet");
       setMasterSeed(seed);
       setAuthHeader(jwtToken);
 
       localStorage.setItem("w3d_token", jwtToken);
-      localStorage.setItem("w3d_user", JSON.stringify(profile));
+      localStorage.setItem("w3d_user", JSON.stringify(updatedProfile));
       localStorage.setItem("w3d_authtype", "wallet");
       sessionStorage.setItem("w3d_seed", seed);
 
@@ -252,6 +312,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     setMasterSeed(null);
+    setRsaPrivateKey(null);
     setAuthType(null);
     setIsAuthenticated(false);
     setAuthHeader(null);
@@ -260,6 +321,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("w3d_user");
     localStorage.removeItem("w3d_authtype");
     sessionStorage.removeItem("w3d_seed");
+    sessionStorage.removeItem("w3d_rsa_private_key");
 
     disconnectWeb3();
   }, [disconnectWeb3]);
@@ -286,6 +348,7 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         masterSeed,
+        rsaPrivateKey,
         isAuthenticated,
         isLoading,
         authType,

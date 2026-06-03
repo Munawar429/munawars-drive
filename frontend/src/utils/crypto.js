@@ -183,3 +183,165 @@ export async function decryptFileClientSide(encryptedBuffer, encryptedKeyHex, ma
 
   return plaintextBuffer;
 }
+
+/**
+ * Generates a 2048-bit RSA-OAEP keypair for secure file sharing.
+ */
+export async function generateRSAKeyPair() {
+  return await window.crypto.subtle.generateKey(
+    {
+      name: "RSA-OAEP",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256"
+    },
+    true, // extractable
+    ["encrypt", "decrypt"]
+  );
+}
+
+/**
+ * Exports a crypto key to its JWK JSON string format.
+ */
+export async function exportKey(key) {
+  const jwk = await window.crypto.subtle.exportKey("jwk", key);
+  return JSON.stringify(jwk);
+}
+
+/**
+ * Imports a Public RSA key from a JWK JSON string.
+ */
+export async function importPublicKey(jwkString) {
+  const jwk = JSON.parse(jwkString);
+  return await window.crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    true,
+    ["encrypt"]
+  );
+}
+
+/**
+ * Imports a Private RSA key from a JWK JSON string.
+ */
+export async function importPrivateKey(jwkString) {
+  const jwk = JSON.parse(jwkString);
+  return await window.crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    true,
+    ["decrypt"]
+  );
+}
+
+/**
+ * Wraps (encrypts) the RSA private key string using the user's masterSeed.
+ */
+export async function wrapPrivateKey(privateKeyJson, masterSeedHex) {
+  const encoder = new TextEncoder();
+  const rawData = encoder.encode(privateKeyJson);
+
+  const masterKeyBytes = hexToBytes(masterSeedHex);
+  const cryptoMasterKey = await window.crypto.subtle.importKey(
+    "raw",
+    masterKeyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    cryptoMasterKey,
+    rawData
+  );
+
+  const packed = new Uint8Array(12 + ciphertext.byteLength);
+  packed.set(iv, 0);
+  packed.set(new Uint8Array(ciphertext), 12);
+  return bytesToHex(packed);
+}
+
+/**
+ * Unwraps (decrypts) the RSA private key using the user's masterSeed.
+ */
+export async function unwrapPrivateKey(wrappedHex, masterSeedHex) {
+  const packed = hexToBytes(wrappedHex);
+  const iv = packed.slice(0, 12);
+  const ciphertext = packed.slice(12);
+
+  const masterKeyBytes = hexToBytes(masterSeedHex);
+  const cryptoMasterKey = await window.crypto.subtle.importKey(
+    "raw",
+    masterKeyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    cryptoMasterKey,
+    ciphertext
+  );
+
+  const decoder = new TextDecoder();
+  return decoder.decode(decryptedBuffer);
+}
+
+/**
+ * Decrypts a file AES key using the owner's master seed.
+ * Extracts the file AES raw bytes directly.
+ */
+export async function extractFileKeyBytes(encryptedKeyHex, masterSeedHex) {
+  const packedKeyBytes = hexToBytes(encryptedKeyHex);
+  const keyIv = packedKeyBytes.slice(0, 12);
+  const encryptedKeyBytes = packedKeyBytes.slice(12);
+
+  const masterKeyBytes = hexToBytes(masterSeedHex);
+  const cryptoMasterKey = await window.crypto.subtle.importKey(
+    "raw",
+    masterKeyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+
+  const fileKeyRaw = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: keyIv },
+    cryptoMasterKey,
+    encryptedKeyBytes
+  );
+
+  return new Uint8Array(fileKeyRaw);
+}
+
+/**
+ * Encrypts a raw file key with a recipient's public RSA key.
+ */
+export async function encryptFileKeyWithRSA(fileKeyRawBytes, recipientPublicKeyJwkString) {
+  const publicKey = await importPublicKey(recipientPublicKeyJwkString);
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: "RSA-OAEP" },
+    publicKey,
+    fileKeyRawBytes
+  );
+  return bytesToHex(new Uint8Array(encrypted));
+}
+
+/**
+ * Decrypts an encrypted file key using the recipient's private RSA key.
+ */
+export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwkString) {
+  const privateKey = await importPrivateKey(myPrivateKeyJwkString);
+  const encryptedBytes = hexToBytes(encryptedFileKeyHex);
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: "RSA-OAEP" },
+    privateKey,
+    encryptedBytes
+  );
+  return new Uint8Array(decrypted);
+}

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { ethers } from "ethers";
 import User from "../models/User.js";
 import Activity from "../models/Activity.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -62,7 +63,9 @@ router.post("/register", async (req, res) => {
       user: {
         id: newUser._id || newUser.id,
         email: newUser.email,
-        walletAddress: newUser.walletAddress
+        walletAddress: newUser.walletAddress,
+        encryptionPublicKey: newUser.encryptionPublicKey,
+        encryptedPrivateKey: newUser.encryptedPrivateKey
       }
     });
   } catch (error) {
@@ -108,7 +111,9 @@ router.post("/login", async (req, res) => {
       user: {
         id: user._id || user.id,
         email: user.email,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        encryptionPublicKey: user.encryptionPublicKey,
+        encryptedPrivateKey: user.encryptedPrivateKey
       }
     });
   } catch (error) {
@@ -208,12 +213,68 @@ router.post("/web3-verify", async (req, res) => {
       user: {
         id: user._id || user.id,
         email: user.email,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        encryptionPublicKey: user.encryptionPublicKey,
+        encryptedPrivateKey: user.encryptedPrivateKey
       }
     });
   } catch (error) {
     console.error("Web3 Verify Error:", error.message);
     return res.status(500).json({ success: false, message: "Server error during signature verification" });
+  }
+});
+
+/**
+ * @route POST /api/auth/save-keys
+ * @desc Save user's dynamic RSA public key and wrapped private key
+ */
+router.post("/save-keys", protect, async (req, res) => {
+  const { encryptionPublicKey, encryptedPrivateKey } = req.body;
+  try {
+    await User.findByIdAndUpdate(req.user._id || req.user.id, {
+      encryptionPublicKey,
+      encryptedPrivateKey
+    });
+    return res.json({ success: true, message: "Keys registered successfully" });
+  } catch (e) {
+    console.error("Save keys error:", e.message);
+    return res.status(500).json({ success: false, message: "Server error saving encryption keys" });
+  }
+});
+
+/**
+ * @route GET /api/auth/public-key/:identifier
+ * @desc Get target user's public encryption key by wallet or email
+ */
+router.get("/public-key/:identifier", protect, async (req, res) => {
+  const { identifier } = req.params;
+  try {
+    const normalized = identifier.toLowerCase();
+    let targetUser = await User.findOne({ walletAddress: normalized });
+    if (!targetUser) {
+      targetUser = await User.findOne({ email: normalized });
+    }
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "Recipient user not found in registry" });
+    }
+
+    if (!targetUser.encryptionPublicKey) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipient has not generated their encryption vault keys yet. Ask them to log in at least once!"
+      });
+    }
+
+    return res.json({
+      success: true,
+      walletAddress: targetUser.walletAddress,
+      email: targetUser.email,
+      publicKey: targetUser.encryptionPublicKey
+    });
+  } catch (e) {
+    console.error("Fetch public key error:", e.message);
+    return res.status(500).json({ success: false, message: "Server error fetching recipient public key" });
   }
 });
 

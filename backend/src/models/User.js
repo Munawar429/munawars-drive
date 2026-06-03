@@ -23,6 +23,9 @@ const UserSchema = new mongoose.Schema(
     },
     encryptionPublicKey: {
       type: String // Used optionally for advanced RSA key sharing
+    },
+    encryptedPrivateKey: {
+      type: String // Wrapped RSA private key (encrypted with user's masterSeed)
     }
   },
   { timestamps: true }

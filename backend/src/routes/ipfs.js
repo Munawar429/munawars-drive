@@ -6,6 +6,7 @@ import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { protect } from "../middleware/auth.js";
+import SharedKey from "../models/SharedKey.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -169,6 +170,76 @@ router.get("/download/:cid", protect, async (req, res) => {
     success: false,
     message: "IPFS resource could not be found or fetched from available gateways"
   });
+});
+
+/**
+ * @route POST /api/ipfs/share-key
+ * @desc Save encrypted file key for a shared recipient user
+ */
+router.post("/share-key", protect, async (req, res) => {
+  const { fileId, recipientAddress, encryptedKey } = req.body;
+
+  if (!fileId || !recipientAddress || !encryptedKey) {
+    return res.status(400).json({ success: false, message: "Missing required key-sharing payload parameters" });
+  }
+
+  try {
+    const sharedRecord = await SharedKey.create({
+      fileId,
+      recipientAddress,
+      encryptedKey
+    });
+
+    console.log(`🔐 Cryptographic file key securely registered for shared recipient: ${recipientAddress} (File ID: ${fileId})`);
+    return res.json({ success: true, message: "Cryptographic key registered successfully for recipient" });
+  } catch (error) {
+    console.error("Save shared key error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error saving shared key" });
+  }
+});
+
+/**
+ * @route GET /api/ipfs/share-key/:fileId
+ * @desc Fetch the encrypted file key mapped to the authenticated user for a shared file
+ */
+router.get("/share-key/:fileId", protect, async (req, res) => {
+  const { fileId } = req.params;
+  const user = req.user;
+
+  try {
+    // 1. Try to find by walletAddress
+    let sharedRecord = null;
+    if (user.walletAddress) {
+      sharedRecord = await SharedKey.findOne({
+        fileId,
+        recipientAddress: user.walletAddress
+      });
+    }
+
+    // 2. Fallback to search by email if walletAddress record is not found
+    if (!sharedRecord && user.email) {
+      sharedRecord = await SharedKey.findOne({
+        fileId,
+        recipientAddress: user.email
+      });
+    }
+
+    if (!sharedRecord) {
+      return res.status(404).json({
+        success: false,
+        message: "No shared decryption key found for this user and file."
+      });
+    }
+
+    return res.json({
+      success: true,
+      fileId,
+      encryptedKey: sharedRecord.encryptedKey
+    });
+  } catch (error) {
+    console.error("Get shared key error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error retrieving shared key" });
+  }
 });
 
 export default router;

@@ -4,6 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { X, Send, Coins, ShieldCheck, Loader2 } from "lucide-react";
+import axios from "axios";
+import { API_URL } from "../utils/config.js";
+import { extractFileKeyBytes, encryptFileKeyWithRSA } from "../utils/crypto.js";
 
 export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [targetAddress, setTargetAddress] = useState("");
@@ -13,7 +16,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [successMessage, setSuccessMessage] = useState("");
 
   const { shareFileOnChain, estimateGasFees } = useWeb3();
-  const { logActivity } = useAuth();
+  const { logActivity, masterSeed } = useAuth();
 
   useEffect(() => {
     if (!isOpen || !file) return;
@@ -43,8 +46,10 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setErrorMessage("");
     setSuccessMessage("");
 
+    const normalizedTarget = targetAddress.toLowerCase().trim();
+
     // Validate address format
-    if (!targetAddress.startsWith("0x") || targetAddress.length !== 42) {
+    if (!normalizedTarget.startsWith("0x") || normalizedTarget.length !== 42) {
       setErrorMessage("Please enter a valid 42-character Ethereum wallet address (0x...)");
       return;
     }
@@ -52,9 +57,38 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setIsProcessing(true);
 
     try {
-      console.log(`⛓️ Registering share permission on-chain: File ${file.fileName} -> Wallet ${targetAddress}...`);
-      
-      const receipt = await shareFileOnChain(Number(file.id), targetAddress.toLowerCase());
+      // 1. Fetch recipient public encryption key from backend registry
+      console.log(`📡 [KeyExchange] Fetching public key for recipient: ${normalizedTarget}...`);
+      let recipientPubKey = null;
+      try {
+        const pkResponse = await axios.get(`${API_URL}/auth/public-key/${normalizedTarget}`);
+        recipientPubKey = pkResponse.data.publicKey;
+      } catch (err) {
+        throw new Error(err.response?.data?.message || "Recipient has not registered their encryption key yet. Tell them to sign in to Munawar's Drive at least once!");
+      }
+
+      // 2. Decrypt symmetric file key locally using owner's master seed
+      console.log("🔒 [KeyExchange] Extracting raw symmetric key of the file...");
+      if (!masterSeed) {
+        throw new Error("Owner's Master Seed not found. Please log in again.");
+      }
+      const rawFileKey = await extractFileKeyBytes(file.encryptedKey, masterSeed);
+
+      // 3. Encrypt the file key using recipient's public key (RSA-OAEP)
+      console.log("🔒 [KeyExchange] Encrypting file key with recipient's public RSA key...");
+      const recipientEncryptedKey = await encryptFileKeyWithRSA(rawFileKey, recipientPubKey);
+
+      // 4. Register the encrypted key mapping in the backend database
+      console.log("📡 [KeyExchange] Registering encrypted key mapping in database...");
+      await axios.post(`${API_URL}/ipfs/share-key`, {
+        fileId: Number(file.id),
+        recipientAddress: normalizedTarget,
+        encryptedKey: recipientEncryptedKey
+      });
+
+      // 5. Fire blockchain transaction to record the permission in the on-chain ACL
+      console.log(`⛓️ [KeyExchange] Registering share permission on-chain: File ${file.fileName} -> Wallet ${normalizedTarget}...`);
+      const receipt = await shareFileOnChain(Number(file.id), normalizedTarget);
       
       console.log("🎉 Share transaction confirmed:", receipt.hash);
       setSuccessMessage(`Access successfully granted to: ${targetAddress.slice(0,6)}...${targetAddress.slice(-4)}`);
@@ -62,7 +96,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       // Log event
       await logActivity(
         "FILE_SHARE",
-        `Shared file ${file.fileName} with wallet: ${targetAddress.toLowerCase()}`,
+        `Shared file ${file.fileName} with wallet: ${normalizedTarget}`,
         file.fileName,
         Number(file.fileSize),
         receipt.hash

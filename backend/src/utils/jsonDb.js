@@ -101,5 +101,6 @@ class JsonCollection {
 export const jsonDb = {
   users: new JsonCollection("users"),
   activities: new JsonCollection("activities"),
-  challenges: new JsonCollection("challenges") // cache signature nonces
+  challenges: new JsonCollection("challenges"), // cache signature nonces
+  sharedKeys: new JsonCollection("shared_keys")
 };

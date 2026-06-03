@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { formatBytes, formatDate, getFileTypeMetadata, formatAddress } from "../utils/helpers.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
-import { decryptFileClientSide } from "../utils/crypto.js";
+import { decryptFileClientSide, decryptFileKeyWithRSA } from "../utils/crypto.js";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
 import { 
@@ -26,7 +26,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
   const [downloadProgress, setDownloadProgress] = useState("");
 
   const { masterSeed, logActivity } = useAuth();
-  const { deleteFileOnChain, toggleVisibilityOnChain } = useWeb3();
+  const { deleteFileOnChain, toggleVisibilityOnChain, walletAddress } = useWeb3();
 
   // Extract variables safely from the Solidity struct
   const fileId = Number(file.id);
@@ -65,13 +65,55 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       // Decrypt if file has encrypted key
       if (encryptedKey && encryptedKey !== "unencrypted") {
         setDownloadProgress("Decrypting locally...");
-        console.log("🔒 Decrypting file client-side using Web Crypto AES-GCM...");
         
-        if (!masterSeed) {
-          throw new Error("Vault Master Seed not found. Please log in again.");
+        const isOwner = walletAddress && owner && (owner.toLowerCase() === walletAddress.toLowerCase());
+        
+        if (isOwner) {
+          console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
+          if (!masterSeed) {
+            throw new Error("Vault Master Seed not found. Please log in again.");
+          }
+          finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
+        } else {
+          console.log("🔒 Decrypting shared file client-side using Asymmetric RSA Key Exchange...");
+          
+          // 1. Fetch shared key from backend
+          let sharedKeyHex = null;
+          try {
+            const keyResponse = await axios.get(`${API_URL}/ipfs/share-key/${fileId}`);
+            sharedKeyHex = keyResponse.data.encryptedKey;
+          } catch (keyErr) {
+            throw new Error(keyErr.response?.data?.message || "Failed to fetch shared decryption key from backend.");
+          }
+          
+          // 2. Fetch RSA private key from sessionStorage
+          const rsaPrivateKeyJson = sessionStorage.getItem("w3d_rsa_private_key");
+          if (!rsaPrivateKeyJson) {
+            throw new Error("Local RSA Private Key not found in vault session. Please reload or log in again.");
+          }
+          
+          // 3. Decrypt file key using RSA
+          const decryptedFileKeyRaw = await decryptFileKeyWithRSA(sharedKeyHex, rsaPrivateKeyJson);
+          
+          // 4. Decrypt file payload using the decrypted symmetric key
+          const packedFileBytes = new Uint8Array(encryptedBuffer);
+          const fileIv = packedFileBytes.slice(0, 12);
+          const ciphertextBytes = packedFileBytes.slice(12);
+
+          const cryptoFileKey = await window.crypto.subtle.importKey(
+            "raw",
+            decryptedFileKeyRaw,
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+          );
+
+          finalBuffer = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: fileIv },
+            cryptoFileKey,
+            ciphertextBytes
+          );
         }
-        
-        finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
       }
 
       setDownloadProgress("Assembling Blob...");
@@ -128,8 +170,54 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
 
       // Decrypt if file encrypted
       if (encryptedKey && encryptedKey !== "unencrypted") {
-        if (!masterSeed) throw new Error("Vault Master Seed missing.");
-        finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
+        setDownloadProgress("Decrypting preview...");
+        
+        const isOwner = walletAddress && owner && (owner.toLowerCase() === walletAddress.toLowerCase());
+        
+        if (isOwner) {
+          console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
+          if (!masterSeed) throw new Error("Vault Master Seed missing.");
+          finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
+        } else {
+          console.log("🔒 Decrypting shared file client-side using Asymmetric RSA Key Exchange...");
+          
+          // 1. Fetch shared key from backend
+          let sharedKeyHex = null;
+          try {
+            const keyResponse = await axios.get(`${API_URL}/ipfs/share-key/${fileId}`);
+            sharedKeyHex = keyResponse.data.encryptedKey;
+          } catch (keyErr) {
+            throw new Error(keyErr.response?.data?.message || "Failed to fetch shared decryption key.");
+          }
+          
+          // 2. Fetch RSA private key
+          const rsaPrivateKeyJson = sessionStorage.getItem("w3d_rsa_private_key");
+          if (!rsaPrivateKeyJson) {
+            throw new Error("Local RSA Private Key not found. Please log in again.");
+          }
+          
+          // 3. Decrypt key via RSA
+          const decryptedFileKeyRaw = await decryptFileKeyWithRSA(sharedKeyHex, rsaPrivateKeyJson);
+          
+          // 4. Decrypt file payload
+          const packedFileBytes = new Uint8Array(encryptedBuffer);
+          const fileIv = packedFileBytes.slice(0, 12);
+          const ciphertextBytes = packedFileBytes.slice(12);
+
+          const cryptoFileKey = await window.crypto.subtle.importKey(
+            "raw",
+            decryptedFileKeyRaw,
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+          );
+
+          finalBuffer = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: fileIv },
+            cryptoFileKey,
+            ciphertextBytes
+          );
+        }
       }
 
       // Pass decrypted object to parent preview modal
