@@ -52,8 +52,9 @@ export const Web3Provider = ({ children }) => {
   // Set up Wallet connection
   const connectWallet = useCallback(async () => {
     if (typeof window === "undefined" || !window.ethereum) {
-      setError("Please install MetaMask to interact with Web3 features!");
-      return null;
+      const msg = "Please install a Web3 wallet (like Rabby Wallet or MetaMask) to interact with Web3 features!";
+      setError(msg);
+      return { error: msg };
     }
 
     setIsConnecting(true);
@@ -137,12 +138,13 @@ export const Web3Provider = ({ children }) => {
 
       await updateBalance(userAddress, browserProvider);
       setIsConnecting(false);
-      return { address: userAddress, signer: web3Signer, provider: browserProvider };
+      return { address: userAddress, signer: web3Signer, provider: browserProvider, error: null };
     } catch (err) {
       console.error("Connection Error:", err);
-      setError(err.message || "Failed to connect MetaMask");
+      const errMsg = err.message || "Failed to connect Web3 Wallet";
+      setError(errMsg);
       setIsConnecting(false);
-      return null;
+      return { error: errMsg };
     }
   }, [getContractInstance, updateBalance]);
 

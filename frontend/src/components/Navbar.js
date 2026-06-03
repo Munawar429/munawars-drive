@@ -83,7 +83,7 @@ export default function Navbar({ activeTab }) {
             className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 hover:opacity-90 shadow-lg shadow-cyan-500/25 active:scale-[0.98] transition-all cursor-pointer ring-pulse-cyan border-none"
           >
             <Wallet className="h-4 w-4" />
-            {isConnecting ? "Linking Wallet..." : "Connect MetaMask"}
+            {isConnecting ? "Linking Wallet..." : "Connect Wallet"}
           </button>
         )}
       </div>

@@ -176,14 +176,14 @@ export const AuthProvider = ({ children }) => {
     
     try {
       // Step A: Connect wallet first via the useWeb3 context
-      console.log("🦊 [Vault3 Auth] Prompting MetaMask connection...");
+      console.log("🔌 [Vault3 Auth] Prompting Web3 wallet connection...");
       const connection = await connectWallet();
-      if (!connection) {
-        throw new Error("Failed to connect MetaMask. Please authorize access in your extension.");
+      if (!connection || connection.error) {
+        throw new Error(connection?.error || "Failed to connect Web3 Wallet. Please authorize access in your extension.");
       }
 
       const { address, signer: web3Signer } = connection;
-      console.log("✅ [Vault3 Auth] MetaMask connected. Address:", address);
+      console.log("✅ [Vault3 Auth] Web3 Wallet connected. Address:", address);
 
       // Step B: Fetch cryptographic signature challenge from backend
       console.log(`📡 [Vault3 Auth] Requesting sign challenge for ${address} from backend...`);
@@ -193,8 +193,8 @@ export const AuthProvider = ({ children }) => {
       const { challenge } = challengeResponse.data;
       console.log("✅ [Vault3 Auth] Received cryptographic challenge:", challenge);
 
-      // Step C: Sign the unique challenge message via MetaMask
-      console.log("🦊 [Vault3 Auth] Requesting MetaMask challenge signature...");
+      // Step C: Sign the unique challenge message via Web3 Wallet
+      console.log("🖋️ [Vault3 Auth] Requesting challenge signature...");
       const signature = await web3Signer.signMessage(challenge);
       console.log("✅ [Vault3 Auth] Signature generated successfully:", signature);
 

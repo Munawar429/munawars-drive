@@ -201,7 +201,7 @@ export default function Home() {
     try {
       await loginWithWallet();
     } catch (err) {
-      setFormError(err.message || "MetaMask authorization failed.");
+      setFormError(err.message || "Web3 Wallet authorization failed.");
     }
     setAuthLoading(false);
   };
@@ -397,7 +397,7 @@ export default function Home() {
               </form>
             )}
 
-            {/* Web3 MetaMask Auth Tab */}
+            {/* Web3 Wallet Auth Tab */}
             {authTab === "wallet" && (
               <div className="text-center py-6 space-y-5">
                 <div className="h-16 w-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto shadow-md">
@@ -406,7 +406,7 @@ export default function Home() {
                 <div>
                   <h4 className="text-sm font-bold text-slate-200">Sign In with Ethereum</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-normal">
-                    Authorize MetaMask. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
+                    Authorize Web3 Wallet. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
                   </p>
                 </div>
 
@@ -427,7 +427,7 @@ export default function Home() {
                   ) : (
                     <span className="flex items-center justify-center gap-2">
                       <UserCheck className="h-4 w-4" />
-                      Sign Challenge via MetaMask
+                      Sign Challenge via Web3 Wallet
                     </span>
                   )}
                 </button>
