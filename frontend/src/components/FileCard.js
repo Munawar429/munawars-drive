@@ -340,7 +340,10 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
   return (
     <div className="glass-card glass-card-hover relative group flex flex-col justify-between h-64 overflow-hidden select-none p-5 text-center">
       {/* Floating Badges */}
-      <div className="absolute top-3.5 left-3.5 z-20">
+      <div className="absolute top-3.5 left-3.5 z-20 flex items-center gap-1.5">
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 font-mono" title="Blockchain File ID">
+          ID: {fileId}
+        </span>
         {encryptedKey && encryptedKey !== "unencrypted" ? (
           <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
             <Lock className="h-2.5 w-2.5" />

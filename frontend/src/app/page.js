@@ -570,6 +570,7 @@ export default function Home() {
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-950/80 border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="p-4">ID</th>
                           <th className="p-4">Name</th>
                           <th className="p-4">Size</th>
                           <th className="p-4">MIME Type</th>
@@ -581,6 +582,7 @@ export default function Home() {
                       <tbody>
                         {filteredFiles(files).map((file) => (
                           <tr key={Number(file.id)} className="border-b border-slate-900/60 hover:bg-slate-900/10 transition-all">
+                            <td className="p-4 font-mono font-bold text-cyan-400">{Number(file.id)}</td>
                             <td className="p-4 font-bold text-slate-200 truncate max-w-xs">{file.fileName}</td>
                             <td className="p-4 font-mono text-slate-400">{formatBytes(Number(file.fileSize))}</td>
                             <td className="p-4 text-slate-400">{file.fileType}</td>
