@@ -170,10 +170,35 @@ export const AuthProvider = ({ children }) => {
         // If not in localStorage, check if backend has it encrypted
         if (profile.encryptionPublicKey && profile.encryptedPrivateKey) {
           if (seed) {
-            console.log("🔒 [Vault3 Auth] Decrypting existing RSA Private Key using Master Seed...");
-            const privateKeyJson = await unwrapPrivateKey(profile.encryptedPrivateKey, seed);
-            localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
-            setRsaPrivateKey(privateKeyJson);
+            try {
+              console.log("🔒 [Vault3 Auth] Decrypting existing RSA Private Key using Master Seed...");
+              const privateKeyJson = await unwrapPrivateKey(profile.encryptedPrivateKey, seed);
+              localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+              setRsaPrivateKey(privateKeyJson);
+            } catch (decryptErr) {
+              console.warn("⚠️ [Vault3 Auth] Decryption of existing RSA key failed. Generating a new keypair as fallback...", decryptErr);
+              const keyPair = await generateRSAKeyPair();
+              const publicKeyJson = await exportKey(keyPair.publicKey);
+              const privateKeyJson = await exportKey(keyPair.privateKey);
+              
+              const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, seed);
+              
+              await axios.post(
+                `${API_URL}/auth/save-keys`,
+                {
+                  encryptionPublicKey: publicKeyJson,
+                  encryptedPrivateKey: encryptedPrivateKey
+                },
+                {
+                  headers: { Authorization: `Bearer ${jwtToken}` }
+                }
+              );
+              
+              localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+              setRsaPrivateKey(privateKeyJson);
+              updatedProfile.encryptionPublicKey = publicKeyJson;
+              updatedProfile.encryptedPrivateKey = encryptedPrivateKey;
+            }
           } else {
             console.warn("⚠️ [Vault3 Auth] Private key exists on backend but no master seed is available to decrypt it.");
           }

@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { encryptFileClientSide } from "../utils/crypto.js";
+import { encryptFileClientSide, encryptFileClientSideWithRSA } from "../utils/crypto.js";
 import { formatBytes } from "../utils/helpers.js";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
@@ -33,7 +33,7 @@ export default function FileUpload({ onUploadSuccess }) {
   const fileInputRef = useRef(null);
 
   const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet } = useWeb3();
-  const { masterSeed, logActivity } = useAuth();
+  const { masterSeed, logActivity, user } = useAuth();
 
   // Handle Drag Over
   const handleDrag = (e) => {
@@ -130,12 +130,17 @@ export default function FileUpload({ onUploadSuccess }) {
       let fileIntegrityHash = "";
 
       if (encryptFile) {
-        if (!masterSeed) {
-          throw new Error("Master Seed not derived. Please sign in again.");
+        let encryptionResult;
+        if (user && user.encryptionPublicKey) {
+          console.log("🔒 Encrypting file client-side using Owner's RSA Public Key...");
+          encryptionResult = await encryptFileClientSideWithRSA(fileArrayBuffer, user.encryptionPublicKey);
+        } else if (masterSeed) {
+          console.log("🔒 Encrypting file client-side using Owner's Master Seed...");
+          encryptionResult = await encryptFileClientSide(fileArrayBuffer, masterSeed);
+        } else {
+          throw new Error("Encryption keys not initialized. Please sign in again.");
         }
         
-        console.log("🔒 Encrypting file client-side using AES-GCM...");
-        const encryptionResult = await encryptFileClientSide(fileArrayBuffer, masterSeed);
         uploadBlob = encryptionResult.encryptedBlob;
         encryptedKey = encryptionResult.encryptedKeyHex;
         fileIntegrityHash = encryptionResult.fileHash;

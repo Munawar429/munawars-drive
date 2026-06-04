@@ -124,6 +124,50 @@ export async function encryptFileClientSide(fileBuffer, masterSeedHex) {
   packedKey.set(new Uint8Array(encryptedKeyBuffer), 12);
   const encryptedKeyHex = bytesToHex(packedKey);
 
+  return {
+    encryptedBlob,
+    encryptedKeyHex,
+    fileHash
+  };
+}
+
+/**
+ * Encrypts an ArrayBuffer locally in-browser using AES-GCM and wraps the key using the owner's RSA Public Key.
+ * Prepend IV to the ciphertext buffer for easy over-the-wire packaging.
+ * Returns: { encryptedBlob: Blob, encryptedKeyHex: String, fileHash: String }
+ */
+export async function encryptFileClientSideWithRSA(fileBuffer, publicKeyJwkString) {
+  // 1. Generate random 256-bit file AES Key
+  const fileKeyRaw = window.crypto.getRandomValues(new Uint8Array(32));
+  
+  // 2. Import file AES key
+  const cryptoFileKey = await window.crypto.subtle.importKey(
+    "raw",
+    fileKeyRaw,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+
+  // 3. Encrypt file payload using file AES key
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertextBuffer = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    cryptoFileKey,
+    fileBuffer
+  );
+
+  // 4. Pack IV and Ciphertext together: [IV (12 bytes)] + [Ciphertext (Variable)]
+  const packedBuffer = new Uint8Array(12 + ciphertextBuffer.byteLength);
+  packedBuffer.set(iv, 0);
+  packedBuffer.set(new Uint8Array(ciphertextBuffer), 12);
+
+  // Convert packed buffer to blob for uploading
+  const encryptedBlob = new Blob([packedBuffer], { type: "application/octet-stream" });
+
+  // 5. Encrypt the file AES key using the owner's Public RSA Key
+  const encryptedKeyHex = await encryptFileKeyWithRSA(fileKeyRaw, publicKeyJwkString);
+
   // 6. Compute SHA-256 of the original unencrypted file
   const fileHash = await computeFileHash(fileBuffer);
 

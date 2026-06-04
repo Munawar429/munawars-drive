@@ -69,11 +69,39 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
         const isOwner = walletAddress && owner && (owner.toLowerCase() === walletAddress.toLowerCase());
         
         if (isOwner) {
-          console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
-          if (!masterSeed) {
-            throw new Error("Vault Master Seed not found. Please log in again.");
+          const isRsaEncrypted = encryptedKey.length > 200;
+          if (isRsaEncrypted) {
+            console.log("🔒 Decrypting file client-side using Owner's RSA Private Key...");
+            const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
+            if (!rsaPrivateKeyJson) {
+              throw new Error("Local RSA Private Key not found. Please log in again.");
+            }
+            
+            const decryptedFileKeyRaw = await decryptFileKeyWithRSA(encryptedKey, rsaPrivateKeyJson);
+            const packedFileBytes = new Uint8Array(encryptedBuffer);
+            const fileIv = packedFileBytes.slice(0, 12);
+            const ciphertextBytes = packedFileBytes.slice(12);
+
+            const cryptoFileKey = await window.crypto.subtle.importKey(
+              "raw",
+              decryptedFileKeyRaw,
+              { name: "AES-GCM" },
+              false,
+              ["decrypt"]
+            );
+
+            finalBuffer = await window.crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: fileIv },
+              cryptoFileKey,
+              ciphertextBytes
+            );
+          } else {
+            console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
+            if (!masterSeed) {
+              throw new Error("Vault Master Seed not found. Please log in again.");
+            }
+            finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
           }
-          finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
         } else {
           console.log("🔒 Decrypting shared file client-side using Asymmetric RSA Key Exchange...");
           
@@ -175,9 +203,37 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
         const isOwner = walletAddress && owner && (owner.toLowerCase() === walletAddress.toLowerCase());
         
         if (isOwner) {
-          console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
-          if (!masterSeed) throw new Error("Vault Master Seed missing.");
-          finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
+          const isRsaEncrypted = encryptedKey.length > 200;
+          if (isRsaEncrypted) {
+            console.log("🔒 Decrypting file client-side using Owner's RSA Private Key...");
+            const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
+            if (!rsaPrivateKeyJson) {
+              throw new Error("Local RSA Private Key not found. Please log in again.");
+            }
+            
+            const decryptedFileKeyRaw = await decryptFileKeyWithRSA(encryptedKey, rsaPrivateKeyJson);
+            const packedFileBytes = new Uint8Array(encryptedBuffer);
+            const fileIv = packedFileBytes.slice(0, 12);
+            const ciphertextBytes = packedFileBytes.slice(12);
+
+            const cryptoFileKey = await window.crypto.subtle.importKey(
+              "raw",
+              decryptedFileKeyRaw,
+              { name: "AES-GCM" },
+              false,
+              ["decrypt"]
+            );
+
+            finalBuffer = await window.crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: fileIv },
+              cryptoFileKey,
+              ciphertextBytes
+            );
+          } else {
+            console.log("🔒 Decrypting file client-side using Owner's Web Crypto AES-GCM...");
+            if (!masterSeed) throw new Error("Vault Master Seed missing.");
+            finalBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
+          }
         } else {
           console.log("🔒 Decrypting shared file client-side using Asymmetric RSA Key Exchange...");
           
