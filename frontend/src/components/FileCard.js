@@ -86,8 +86,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             throw new Error(keyErr.response?.data?.message || "Failed to fetch shared decryption key from backend.");
           }
           
-          // 2. Fetch RSA private key from sessionStorage
-          const rsaPrivateKeyJson = sessionStorage.getItem("w3d_rsa_private_key");
+          // 2. Fetch RSA private key from localStorage
+          const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
           if (!rsaPrivateKeyJson) {
             throw new Error("Local RSA Private Key not found in vault session. Please reload or log in again.");
           }
@@ -190,8 +190,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             throw new Error(keyErr.response?.data?.message || "Failed to fetch shared decryption key.");
           }
           
-          // 2. Fetch RSA private key
-          const rsaPrivateKeyJson = sessionStorage.getItem("w3d_rsa_private_key");
+          // 2. Fetch RSA private key from localStorage
+          const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
           if (!rsaPrivateKeyJson) {
             throw new Error("Local RSA Private Key not found. Please log in again.");
           }

@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   const [authType, setAuthType] = useState(null); // 'email' or 'wallet'
   const [error, setError] = useState(null);
 
-  const { connectWallet, signer, disconnectWallet: disconnectWeb3 } = useWeb3();
+  const { connectWallet, signer, disconnectWallet: disconnectWeb3, walletAddress } = useWeb3();
 
   // Axios Authorization header sync
   const setAuthHeader = (jwtToken) => {
@@ -35,6 +35,25 @@ export const AuthProvider = ({ children }) => {
       delete axios.defaults.headers.common["Authorization"];
     }
   };
+
+  // 4. Terminate session (defined at top to avoid TDZ ReferenceErrors)
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    setMasterSeed(null);
+    setRsaPrivateKey(null);
+    setAuthType(null);
+    setIsAuthenticated(false);
+    setAuthHeader(null);
+
+    localStorage.removeItem("w3d_token");
+    localStorage.removeItem("w3d_user");
+    localStorage.removeItem("w3d_authtype");
+    sessionStorage.removeItem("w3d_seed");
+    localStorage.removeItem("w3d_rsa_private_key");
+
+    disconnectWeb3();
+  }, [disconnectWeb3]);
 
   // Restore session on bootstrap
   useEffect(() => {
@@ -47,44 +66,52 @@ export const AuthProvider = ({ children }) => {
       // We store the encrypted master seed in sessionStorage for security
       // (survives tab refreshes, deleted when browser tab is closed).
       const storedSeed = sessionStorage.getItem("w3d_seed");
-      let storedRsaKey = sessionStorage.getItem("w3d_rsa_private_key");
+      let storedRsaKey = localStorage.getItem("w3d_rsa_private_key");
 
-      if (storedToken && storedUser && storedSeed) {
+      if (storedToken && storedUser) {
         try {
           let parsedUser = JSON.parse(storedUser);
           
           // Background validation/regeneration of RSA keys if missing (e.g. user logged in before key exchange integration)
           if (!parsedUser.encryptionPublicKey || !parsedUser.encryptedPrivateKey) {
-            console.log("🔒 [Vault3 Auth] Session restored but RSA keys are missing from user profile. Generating in background...");
-            const keyPair = await generateRSAKeyPair();
-            const publicKeyJson = await exportKey(keyPair.publicKey);
-            const privateKeyJson = await exportKey(keyPair.privateKey);
-            
-            const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, storedSeed);
-            
-            await axios.post(
-              `${API_URL}/auth/save-keys`,
-              {
-                encryptionPublicKey: publicKeyJson,
-                encryptedPrivateKey: encryptedPrivateKey
-              },
-              {
-                headers: { Authorization: `Bearer ${storedToken}` }
-              }
-            );
-            
-            sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
-            storedRsaKey = privateKeyJson;
-            
-            parsedUser.encryptionPublicKey = publicKeyJson;
-            parsedUser.encryptedPrivateKey = encryptedPrivateKey;
-            localStorage.setItem("w3d_user", JSON.stringify(parsedUser));
+            if (storedSeed) {
+              console.log("🔒 [Vault3 Auth] Session restored but RSA keys are missing from user profile. Generating in background...");
+              const keyPair = await generateRSAKeyPair();
+              const publicKeyJson = await exportKey(keyPair.publicKey);
+              const privateKeyJson = await exportKey(keyPair.privateKey);
+              
+              const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, storedSeed);
+              
+              await axios.post(
+                `${API_URL}/auth/save-keys`,
+                {
+                  encryptionPublicKey: publicKeyJson,
+                  encryptedPrivateKey: encryptedPrivateKey
+                },
+                {
+                  headers: { Authorization: `Bearer ${storedToken}` }
+                }
+              );
+              
+              localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+              storedRsaKey = privateKeyJson;
+              
+              parsedUser.encryptionPublicKey = publicKeyJson;
+              parsedUser.encryptedPrivateKey = encryptedPrivateKey;
+              localStorage.setItem("w3d_user", JSON.stringify(parsedUser));
+            } else {
+              console.warn("⚠️ [Vault3 Auth] RSA keys missing from profile, but cannot generate without master seed.");
+            }
           } else if (!storedRsaKey) {
-            // Keys exist in user profile but are missing from sessionStorage (e.g. refreshed page or duplicate tab)
-            console.log("🔒 [Vault3 Auth] Session restored. Decrypting RSA Private Key in background...");
-            const privateKeyJson = await unwrapPrivateKey(parsedUser.encryptedPrivateKey, storedSeed);
-            sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
-            storedRsaKey = privateKeyJson;
+            // Keys exist in user profile but are missing from localStorage (e.g. refreshed page or duplicate tab)
+            if (storedSeed) {
+              console.log("🔒 [Vault3 Auth] Session restored. Decrypting RSA Private Key in background...");
+              const privateKeyJson = await unwrapPrivateKey(parsedUser.encryptedPrivateKey, storedSeed);
+              localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+              storedRsaKey = privateKeyJson;
+            } else {
+              console.warn("⚠️ [Vault3 Auth] RSA Private Key missing from localStorage and no master seed is available to decrypt it.");
+            }
           }
 
           setToken(storedToken);
@@ -109,36 +136,78 @@ export const AuthProvider = ({ children }) => {
     try {
       let updatedProfile = { ...profile };
       
-      if (!profile.encryptionPublicKey || !profile.encryptedPrivateKey) {
-        console.log("🔒 [Vault3 Auth] Generating RSA Keypair for secure file sharing...");
-        const keyPair = await generateRSAKeyPair();
-        const publicKeyJson = await exportKey(keyPair.publicKey);
-        const privateKeyJson = await exportKey(keyPair.privateKey);
+      // Check if browser already has 'Local RSA Private Key' in localStorage
+      let localRsaKey = localStorage.getItem("w3d_rsa_private_key");
+      
+      if (localRsaKey) {
+        console.log("🔑 [Vault3 Auth] Found existing Local RSA Private Key in localStorage.");
+        setRsaPrivateKey(localRsaKey);
         
-        console.log("🔒 [Vault3 Auth] Encrypting RSA Private Key using Master Seed...");
-        const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, seed);
-        
-        console.log("📡 [Vault3 Auth] Registering RSA keys in backend registry...");
-        await axios.post(
-          `${API_URL}/auth/save-keys`,
-          {
-            encryptionPublicKey: publicKeyJson,
-            encryptedPrivateKey: encryptedPrivateKey
-          },
-          {
-            headers: { Authorization: `Bearer ${jwtToken}` }
+        // If backend profile is missing keys, register this local key
+        if (!profile.encryptionPublicKey || !profile.encryptedPrivateKey) {
+          if (seed) {
+            console.log("📡 [Vault3 Auth] Registering existing local keys to backend registry...");
+            const privateJwk = JSON.parse(localRsaKey);
+            const { d, p, q, dp, dq, qi, ...publicJwk } = privateJwk;
+            const publicKeyJson = JSON.stringify(publicJwk);
+            const encryptedPrivateKey = await wrapPrivateKey(localRsaKey, seed);
+            
+            await axios.post(
+              `${API_URL}/auth/save-keys`,
+              {
+                encryptionPublicKey: publicKeyJson,
+                encryptedPrivateKey: encryptedPrivateKey
+              },
+              {
+                headers: { Authorization: `Bearer ${jwtToken}` }
+              }
+            );
+            updatedProfile.encryptionPublicKey = publicKeyJson;
+            updatedProfile.encryptedPrivateKey = encryptedPrivateKey;
           }
-        );
-        
-        sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
-        setRsaPrivateKey(privateKeyJson);
-        updatedProfile.encryptionPublicKey = publicKeyJson;
-        updatedProfile.encryptedPrivateKey = encryptedPrivateKey;
+        }
       } else {
-        console.log("🔒 [Vault3 Auth] Decrypting existing RSA Private Key using Master Seed...");
-        const privateKeyJson = await unwrapPrivateKey(profile.encryptedPrivateKey, seed);
-        sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
-        setRsaPrivateKey(privateKeyJson);
+        // If not in localStorage, check if backend has it encrypted
+        if (profile.encryptionPublicKey && profile.encryptedPrivateKey) {
+          if (seed) {
+            console.log("🔒 [Vault3 Auth] Decrypting existing RSA Private Key using Master Seed...");
+            const privateKeyJson = await unwrapPrivateKey(profile.encryptedPrivateKey, seed);
+            localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+            setRsaPrivateKey(privateKeyJson);
+          } else {
+            console.warn("⚠️ [Vault3 Auth] Private key exists on backend but no master seed is available to decrypt it.");
+          }
+        } else {
+          // Generate new RSA keypair
+          if (seed) {
+            console.log("🔒 [Vault3 Auth] Generating RSA Keypair for secure file sharing...");
+            const keyPair = await generateRSAKeyPair();
+            const publicKeyJson = await exportKey(keyPair.publicKey);
+            const privateKeyJson = await exportKey(keyPair.privateKey);
+            
+            console.log("🔒 [Vault3 Auth] Encrypting RSA Private Key using Master Seed...");
+            const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, seed);
+            
+            console.log("📡 [Vault3 Auth] Registering RSA keys in backend registry...");
+            await axios.post(
+              `${API_URL}/auth/save-keys`,
+              {
+                encryptionPublicKey: publicKeyJson,
+                encryptedPrivateKey: encryptedPrivateKey
+              },
+              {
+                headers: { Authorization: `Bearer ${jwtToken}` }
+              }
+            );
+            
+            localStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+            setRsaPrivateKey(privateKeyJson);
+            updatedProfile.encryptionPublicKey = publicKeyJson;
+            updatedProfile.encryptedPrivateKey = encryptedPrivateKey;
+          } else {
+            console.warn("⚠️ [Vault3 Auth] Cannot generate new RSA keys without a master seed.");
+          }
+        }
       }
       
       return updatedProfile;
@@ -300,10 +369,22 @@ export const AuthProvider = ({ children }) => {
       
       const { token: jwtToken, user: profile } = verifyResponse.data;
 
-      // Step E: Derive Master Vault Seed deterministically from MetaMask signature
-      console.log("🔒 [Vault3 Auth] Deriving Master Seed client-side from unique MetaMask signature...");
-      const seed = deriveMasterSeedFromSignature(signature);
-      console.log("🔑 [Vault3 Auth] Master Vault Seed derived successfully!");
+      // Check if we already have the Local RSA Private Key in localStorage
+      let localRsaKey = localStorage.getItem("w3d_rsa_private_key");
+      let seed = null;
+
+      // If we don't have the local private key OR if the backend doesn't have the public key,
+      // we need to derive the Master Seed by signing a constant message.
+      if (!localRsaKey || !profile.encryptionPublicKey || !profile.encryptedPrivateKey) {
+        console.log("🔒 [Vault3 Auth] Local RSA Private Key or Backend keys not found. Prompting to derive Master Seed...");
+        const seedMessage = `Sign this message to derive your secure Vault3 Master Vault Seed. This signature will protect your local decryption keys.\n\nWallet: ${address.toLowerCase()}`;
+        console.log("🖋️ [Vault3 Auth] Requesting seed derivation signature...");
+        const seedSignature = await web3Signer.signMessage(seedMessage);
+        console.log("✅ [Vault3 Auth] Seed signature generated successfully.");
+        
+        seed = deriveMasterSeedFromSignature(seedSignature);
+        console.log("🔑 [Vault3 Auth] Master Vault Seed derived successfully!");
+      }
 
       // Initialize RSA Keys
       const updatedProfile = await initializeUserRSAKeys(profile, seed, jwtToken);
@@ -311,13 +392,16 @@ export const AuthProvider = ({ children }) => {
       setToken(jwtToken);
       setUser(updatedProfile);
       setAuthType("wallet");
-      setMasterSeed(seed);
+      if (seed) {
+        setMasterSeed(seed);
+        sessionStorage.setItem("w3d_seed", seed);
+      }
+      setRsaPrivateKey(localStorage.getItem("w3d_rsa_private_key"));
       setAuthHeader(jwtToken);
 
       localStorage.setItem("w3d_token", jwtToken);
       localStorage.setItem("w3d_user", JSON.stringify(updatedProfile));
       localStorage.setItem("w3d_authtype", "wallet");
-      sessionStorage.setItem("w3d_seed", seed);
 
       setIsAuthenticated(true);
       setIsLoading(false);
@@ -342,24 +426,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 4. Terminate session
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    setMasterSeed(null);
-    setRsaPrivateKey(null);
-    setAuthType(null);
-    setIsAuthenticated(false);
-    setAuthHeader(null);
+  // Watch for Web3 Wallet address change and auto-logout to prevent security issues
+  useEffect(() => {
+    if (isAuthenticated && authType === "wallet" && walletAddress && user && user.walletAddress) {
+      if (walletAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
+        console.log(`🔄 [Vault3 Auth] Wallet address changed from ${user.walletAddress} to ${walletAddress}. Logging out...`);
+        logout();
+      }
+    }
+  }, [walletAddress, isAuthenticated, authType, user, logout]);
 
-    localStorage.removeItem("w3d_token");
-    localStorage.removeItem("w3d_user");
-    localStorage.removeItem("w3d_authtype");
-    sessionStorage.removeItem("w3d_seed");
-    sessionStorage.removeItem("w3d_rsa_private_key");
 
-    disconnectWeb3();
-  }, [disconnectWeb3]);
 
   // Log custom operations via Express Activity Audit Log
   const logActivity = async (action, details, fileName = "", fileSize = 0, txHash = "") => {
