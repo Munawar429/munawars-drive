@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { X, Send, Coins, ShieldCheck, Loader2 } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
-import { extractFileKeyBytes, encryptFileKeyWithRSA } from "../utils/crypto.js";
+import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA } from "../utils/crypto.js";
 
 export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [targetAddress, setTargetAddress] = useState("");
@@ -16,7 +16,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [successMessage, setSuccessMessage] = useState("");
 
   const { shareFileOnChain, estimateGasFees } = useWeb3();
-  const { logActivity, masterSeed } = useAuth();
+  const { logActivity, masterSeed, user } = useAuth();
 
   useEffect(() => {
     if (!isOpen || !file) return;
@@ -47,6 +47,13 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setSuccessMessage("");
 
     const normalizedTarget = targetAddress.toLowerCase().trim();
+    const ownerAddress = user?.walletAddress?.toLowerCase();
+
+    // Prevent sharing with oneself
+    if (ownerAddress && normalizedTarget === ownerAddress) {
+      setErrorMessage("You cannot share a file with your own wallet address.");
+      return;
+    }
 
     // Validate address format
     if (!normalizedTarget.startsWith("0x") || normalizedTarget.length !== 42) {
@@ -67,12 +74,23 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         throw new Error(err.response?.data?.message || "Recipient has not registered their encryption key yet. Tell them to sign in to Munawar's Drive at least once!");
       }
 
-      // 2. Decrypt symmetric file key locally using owner's master seed
+      // 2. Decrypt symmetric file key locally using owner's keys
       console.log("🔒 [KeyExchange] Extracting raw symmetric key of the file...");
-      if (!masterSeed) {
-        throw new Error("Owner's Master Seed not found. Please log in again.");
+      let rawFileKey;
+      const isRsaEncrypted = file.encryptedKey.length > 200;
+      
+      if (isRsaEncrypted) {
+        const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
+        if (!rsaPrivateKeyJson) {
+          throw new Error("Local RSA Private Key not found in browser storage. Please log in again.");
+        }
+        rawFileKey = await decryptFileKeyWithRSA(file.encryptedKey, rsaPrivateKeyJson);
+      } else {
+        if (!masterSeed) {
+          throw new Error("Owner's Master Seed not found. Please log in again.");
+        }
+        rawFileKey = await extractFileKeyBytes(file.encryptedKey, masterSeed);
       }
-      const rawFileKey = await extractFileKeyBytes(file.encryptedKey, masterSeed);
 
       // 3. Encrypt the file key using recipient's public key (RSA-OAEP)
       console.log("🔒 [KeyExchange] Encrypting file key with recipient's public RSA key...");
