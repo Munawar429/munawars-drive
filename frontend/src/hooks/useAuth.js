@@ -47,11 +47,46 @@ export const AuthProvider = ({ children }) => {
       // We store the encrypted master seed in sessionStorage for security
       // (survives tab refreshes, deleted when browser tab is closed).
       const storedSeed = sessionStorage.getItem("w3d_seed");
-      const storedRsaKey = sessionStorage.getItem("w3d_rsa_private_key");
+      let storedRsaKey = sessionStorage.getItem("w3d_rsa_private_key");
 
       if (storedToken && storedUser && storedSeed) {
         try {
-          const parsedUser = JSON.parse(storedUser);
+          let parsedUser = JSON.parse(storedUser);
+          
+          // Background validation/regeneration of RSA keys if missing (e.g. user logged in before key exchange integration)
+          if (!parsedUser.encryptionPublicKey || !parsedUser.encryptedPrivateKey) {
+            console.log("🔒 [Vault3 Auth] Session restored but RSA keys are missing from user profile. Generating in background...");
+            const keyPair = await generateRSAKeyPair();
+            const publicKeyJson = await exportKey(keyPair.publicKey);
+            const privateKeyJson = await exportKey(keyPair.privateKey);
+            
+            const encryptedPrivateKey = await wrapPrivateKey(privateKeyJson, storedSeed);
+            
+            await axios.post(
+              `${API_URL}/auth/save-keys`,
+              {
+                encryptionPublicKey: publicKeyJson,
+                encryptedPrivateKey: encryptedPrivateKey
+              },
+              {
+                headers: { Authorization: `Bearer ${storedToken}` }
+              }
+            );
+            
+            sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+            storedRsaKey = privateKeyJson;
+            
+            parsedUser.encryptionPublicKey = publicKeyJson;
+            parsedUser.encryptedPrivateKey = encryptedPrivateKey;
+            localStorage.setItem("w3d_user", JSON.stringify(parsedUser));
+          } else if (!storedRsaKey) {
+            // Keys exist in user profile but are missing from sessionStorage (e.g. refreshed page or duplicate tab)
+            console.log("🔒 [Vault3 Auth] Session restored. Decrypting RSA Private Key in background...");
+            const privateKeyJson = await unwrapPrivateKey(parsedUser.encryptedPrivateKey, storedSeed);
+            sessionStorage.setItem("w3d_rsa_private_key", privateKeyJson);
+            storedRsaKey = privateKeyJson;
+          }
+
           setToken(storedToken);
           setUser(parsedUser);
           setAuthType(storedAuthType);
