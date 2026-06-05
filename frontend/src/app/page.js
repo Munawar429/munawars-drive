@@ -543,14 +543,14 @@ export default function Home() {
               {/* Grid / List display */}
               {loadingFiles ? (
                 // Skeletons
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="glass-card h-48 shimmer rounded-xl" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer" />
                   ))}
                 </div>
               ) : filteredFiles(files).length > 0 ? (
                 viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredFiles(files).map((file) => (
                       <FileCard
                         key={Number(file.id)}
@@ -619,13 +619,13 @@ export default function Home() {
               </div>
 
               {loadingFiles ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="glass-card h-48 shimmer rounded-xl" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer" />
                   ))}
                 </div>
               ) : sharedFiles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {sharedFiles.map((file) => (
                     <FileCard
                       key={Number(file.id)}

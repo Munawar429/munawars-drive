@@ -338,69 +338,80 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
   };
 
   return (
-    <div className="glass-card glass-card-hover relative group flex flex-col justify-between h-64 overflow-hidden select-none p-5 text-center">
+    <div className="relative group flex flex-col justify-between h-72 rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:border-cyan-500/40 select-none">
       {/* Floating Badges */}
-      <div className="absolute top-3.5 left-3.5 z-20 flex items-center gap-1.5">
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 font-mono" title="Blockchain File ID">
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5">
+        <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
           ID: {fileId}
         </span>
         {encryptedKey && encryptedKey !== "unencrypted" ? (
-          <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+          <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]">
             <Lock className="h-2.5 w-2.5" />
-            AES-GCM
+            {encryptedKey.length > 200 ? "RSA" : "AES-GCM"}
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 font-mono">
+          <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-slate-400 font-mono">
             Plain
           </span>
         )}
       </div>
       
-      <div className="absolute top-3.5 right-3.5 z-20">
+      <div className="absolute top-4 right-4 z-20">
         {isPublic ? (
-          <span className="h-5 w-5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center" title="Publicly accessible">
-            <Globe className="h-2.5 w-2.5" />
+          <span className="h-6 w-6 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shadow-[0_0_10px_rgba(99,102,241,0.1)] transition-colors hover:bg-indigo-500/20" title="Publicly accessible">
+            <Globe className="h-3 w-3" />
           </span>
         ) : (
-          <span className="h-5 w-5 rounded bg-slate-800 border border-slate-700 text-slate-500 flex items-center justify-center" title="Private">
-            <Lock className="h-2.5 w-2.5" />
+          <span className="h-6 w-6 rounded-full bg-slate-950/80 border border-slate-800 text-slate-500 flex items-center justify-center" title="Private Vault">
+            <Lock className="h-3 w-3" />
           </span>
         )}
       </div>
 
       {/* Card Content - Centered */}
-      <div className="mt-4 flex flex-col items-center">
-        {/* Large File Type Icon (glowing cyan effect) */}
-        <div className="h-14 w-14 rounded-2xl flex items-center justify-center border border-slate-800/80 bg-slate-950/40 shadow-md mb-2.5 transition-transform duration-300 group-hover:scale-105">
-          <FileIcon className="h-7 w-7 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.55)]" />
+      <div className="mt-8 flex flex-col items-center">
+        {/* Large File Type Icon with glowing holographic background */}
+        <div className="relative h-16 w-16 rounded-2xl flex items-center justify-center border border-slate-700 bg-slate-950/60 shadow-lg mb-3 transition-all duration-300 group-hover:scale-105 group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+          <FileIcon className="h-8 w-8 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+          </span>
         </div>
         
-        <h4 className="text-sm font-bold text-slate-200 truncate w-full max-w-[170px] group-hover:text-cyan-300 transition-colors text-center" title={fileName}>
+        <h4 className="text-sm font-semibold text-slate-100 group-hover:text-cyan-300 transition-colors text-center w-full max-w-[200px] truncate" title={fileName}>
           {fileName}
         </h4>
-        <span className="text-[10px] text-slate-400 font-mono text-center mt-0.5 block">
-          {formatBytes(fileSize)}
-        </span>
+        
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[10px] text-slate-400 font-mono">
+            {formatBytes(fileSize)}
+          </span>
+          <span className="text-[10px] text-slate-600 font-mono">•</span>
+          <span className="text-[10px] text-slate-500 font-mono">
+            {formatDate(timestamp)}
+          </span>
+        </div>
 
         {/* IPFS Hash Badge */}
-        <span className="bg-slate-950/45 border border-slate-800/70 rounded-lg px-2.5 py-0.5 text-slate-500 text-[9px] font-mono text-center select-all cursor-pointer mt-2 block w-fit max-w-[150px] truncate hover:text-slate-400 transition-colors" title={ipfsHash}>
+        <span className="bg-slate-950/60 border border-slate-900/80 hover:border-slate-800 rounded-lg px-2.5 py-1 text-slate-500 text-[10px] font-mono text-center select-all cursor-pointer mt-3 block w-fit max-w-[170px] truncate hover:text-slate-300 transition-colors" title={ipfsHash}>
           {ipfsHash.slice(0, 8)}...{ipfsHash.slice(-6)}
         </span>
       </div>
 
       {/* Footer Controls & Download */}
-      <div className="mt-3 flex flex-col gap-2">
-        {/* Quick actions bar (Share, Toggle visibility, Delete, Preview) */}
-        <div className="flex items-center justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+      <div className="mt-4 flex flex-col gap-3">
+        {/* Quick actions bar */}
+        <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
           {/* Preview button */}
           {["Image", "Document", "Code"].includes(category) && (
             <button
               onClick={handlePreview}
               disabled={isProcessing}
-              className="h-7 w-7 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-400/40 hover:bg-slate-900 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
               title="Decrypt & Preview"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
             </button>
           )}
 
@@ -408,10 +419,10 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           {!isSharedView && (
             <button
               onClick={() => onShare && onShare(file)}
-              className="h-7 w-7 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-400/40 hover:bg-slate-900 text-slate-400 hover:text-indigo-400 flex items-center justify-center transition-all cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-violet-500/50 hover:bg-violet-500/10 text-slate-400 hover:text-violet-400 flex items-center justify-center transition-all cursor-pointer"
               title="Share Key Access"
             >
-              <Share2 className="h-3.5 w-3.5" />
+              <Share2 className="h-4 w-4" />
             </button>
           )}
 
@@ -420,13 +431,13 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={handleToggleVisibility}
               disabled={isProcessing}
-              className="h-7 w-7 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-400/40 hover:bg-slate-900 text-slate-400 hover:text-amber-400 flex items-center justify-center transition-all cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-amber-500/50 hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 flex items-center justify-center transition-all cursor-pointer"
               title={isPublic ? "Make Private" : "Make Public"}
             >
               {isPublic ? (
-                <Lock className="h-3.5 w-3.5" />
+                <Lock className="h-4 w-4" />
               ) : (
-                <Globe className="h-3.5 w-3.5" />
+                <Globe className="h-4 w-4" />
               )}
             </button>
           )}
@@ -436,28 +447,28 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={handleDelete}
               disabled={isProcessing}
-              className="h-7 w-7 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-400/40 hover:bg-slate-900 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer"
+              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer"
               title="Delete record"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* Shifting Gradient Decrypt & Download button */}
+        {/* Gradient Decrypt & Download button */}
         <button
           onClick={handleDownload}
           disabled={isProcessing}
-          className="w-full h-8.5 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-600 hover:opacity-90 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow shadow-cyan-500/10 cursor-pointer border-none transition-all active:scale-[0.98]"
+          className="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-1.5 shadow-md shadow-cyan-500/10 hover:shadow-cyan-500/20 cursor-pointer border-none transition-all active:scale-[0.98] duration-300"
         >
           {isProcessing && downloadProgress ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-              <span className="truncate max-w-[120px]">{downloadProgress}</span>
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <span className="truncate max-w-[150px]">{downloadProgress}</span>
             </>
           ) : (
             <>
-              <Download className="h-3.5 w-3.5 text-white" />
+              <Download className="h-4 w-4 text-white" />
               <span>Decrypt & Download</span>
             </>
           )}
