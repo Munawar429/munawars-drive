@@ -282,55 +282,66 @@ export default function Home() {
   // Render Landing & Authentication View
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 px-6 lg:px-8 relative grid-bg overflow-hidden">
+      <div className="min-h-screen bg-[#040814] flex flex-col justify-center py-12 px-6 lg:px-8 relative grid-bg overflow-hidden">
         {/* Glow Spheres */}
-        <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] bg-cyan-600/5 rounded-full filter blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] bg-blue-600/5 rounded-full filter blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] bg-cyan-500/10 rounded-full filter blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] bg-indigo-500/10 rounded-full filter blur-[130px] pointer-events-none" />
 
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 mb-6">
-            <Folder className="h-6 w-6 text-white" />
+          {/* Logo container as a floating multi-faceted widget */}
+          <div className="relative mx-auto h-14 w-14 rounded-2xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.2)] mb-6 transition-all duration-300 hover:scale-105 hover:border-cyan-500/50">
+            <Folder className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.8)]" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+            </span>
           </div>
+          
           <h2 className="text-3xl font-extrabold bg-gradient-to-r from-cyan-400 via-blue-300 to-white bg-clip-text text-transparent tracking-tight">
             Munawar's Drive
           </h2>
-          <p className="mt-2.5 text-xs font-semibold text-cyan-400 font-mono tracking-widest uppercase">
+          <p className="mt-2 text-[10px] font-bold text-cyan-400/80 font-mono tracking-[0.2em] uppercase">
             Blockchain-Based Decentralized Storage System
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl z-10">
-          <div className="glass-panel rounded-2xl shadow-2xl p-8 glow-border">
-            {/* Form Toggle buttons */}
-            <div className="flex rounded-xl bg-slate-950/50 p-1 border border-slate-900 mb-6">
+          {/* Glass Pane Container */}
+          <div className="relative rounded-2xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] glow-border">
+            
+            {/* Form Toggle buttons as crystal block tab selectors */}
+            <div className="flex gap-2 rounded-xl bg-slate-950/60 p-1.5 border border-white/5 mb-6">
               <button
+                type="button"
                 onClick={() => { setAuthTab("login"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                   authTab === "login"
-                    ? "bg-slate-900 text-cyan-400 border border-slate-800"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
                 }`}
               >
                 <Mail className="h-3.5 w-3.5" />
                 Sign In
               </button>
               <button
+                type="button"
                 onClick={() => { setAuthTab("register"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                   authTab === "register"
-                    ? "bg-slate-900 text-cyan-400 border border-slate-800"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 Create Vault
               </button>
               <button
+                type="button"
                 onClick={() => { setAuthTab("wallet"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                   authTab === "wallet"
-                    ? "bg-slate-900 text-cyan-400 border border-slate-800"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
                 }`}
               >
                 <Lock className="h-3.5 w-3.5" />
@@ -347,9 +358,9 @@ export default function Home() {
 
             {/* Conventional Login Form */}
             {(authTab === "login" || authTab === "register") && (
-              <form onSubmit={handleAuthSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Email Address</label>
+              <form onSubmit={handleAuthSubmit} className="space-y-5">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Email Address</label>
                   <input
                     type="email"
                     value={email}
@@ -361,8 +372,8 @@ export default function Home() {
                   />
                 </div>
                 
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Vault Password</label>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Vault Password</label>
                   <input
                     type="password"
                     value={password}
@@ -374,18 +385,18 @@ export default function Home() {
                   />
                 </div>
 
-                <p className="text-[10px] text-slate-500 bg-slate-950/30 p-3 rounded-lg border border-slate-900/60 leading-normal">
+                <p className="text-[10px] text-slate-400 bg-slate-950/45 p-3 rounded-xl border border-slate-900 leading-normal">
                   🔐 <b>Zero-Knowledge Security:</b> We derive your 256-bit AES master seed entirely inside your browser. Your password is never sent to the server in plaintext, and our database never stores your decryption keys.
                 </p>
 
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full mt-4 glass-btn-primary py-3 cursor-pointer"
+                  className="w-full mt-4 h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
                 >
                   {authLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
                       Decrypting Vault...
                     </span>
                   ) : authTab === "login" ? (
@@ -399,29 +410,38 @@ export default function Home() {
 
             {/* Web3 Wallet Auth Tab */}
             {authTab === "wallet" && (
-              <div className="text-center py-6 space-y-5">
-                <div className="h-16 w-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto shadow-md">
-                  <Lock className="h-6 w-6 text-cyan-400" />
+              <div className="text-center py-4 space-y-6">
+                {/* Articulated 3D holographic lock */}
+                <div className="relative h-20 w-20 flex items-center justify-center mx-auto">
+                  {/* Rotating Orbit rings */}
+                  <div className="absolute inset-0 rounded-full border border-dashed border-cyan-500/20 animate-[spin_12s_linear_infinite]" />
+                  <div className="absolute inset-2 rounded-full border border-dashed border-blue-500/30 animate-[spin_8s_linear_infinite_reverse]" />
+                  {/* Padlock Glow Shield */}
+                  <div className="absolute h-14 w-14 rounded-2xl bg-slate-950/80 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-pulse">
+                    <Lock className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                  </div>
                 </div>
+
                 <div>
                   <h4 className="text-sm font-bold text-slate-200">Sign In with Ethereum</h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-normal">
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-normal">
                     Authorize Web3 Wallet. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
                   </p>
                 </div>
 
-                <p className="text-[10px] text-slate-500 bg-slate-950/30 p-3 rounded-lg border border-slate-900/60 leading-normal text-left max-w-md mx-auto">
+                {/* Cyber-Luminous Warning Notification */}
+                <p className="text-[10px] text-amber-300 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 leading-normal text-left max-w-md mx-auto shadow-[inset_0_1px_10px_rgba(245,158,11,0.05)]">
                   💡 <b>No Password Required:</b> By connecting and signing with your private key, you derive the AES-GCM decryption key for all your private files natively in-browser.
                 </p>
 
                 <button
                   onClick={handleWalletAuth}
                   disabled={authLoading}
-                  className="w-full glass-btn-primary py-3 cursor-pointer"
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
                 >
                   {authLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
                       Verifying Signature...
                     </span>
                   ) : (
@@ -438,6 +458,7 @@ export default function Home() {
       </div>
     );
   }
+
 
   // --------------------------------------------------
   // MAIN DASHBOARD ORCHESTRATION LAYOUT
