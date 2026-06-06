@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import Sidebar from "../components/Sidebar.js";
@@ -334,15 +335,21 @@ export default function Home() {
             <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden flex items-center justify-center group/asset hover:border-cyan-500/30 transition-all duration-500 shadow-[0_0_20px_rgba(6,182,212,0.02)] hover:shadow-[0_0_30px_rgba(6,182,212,0.08)]">
               <div className="absolute inset-0 grid-bg opacity-20" />
               <div className="absolute h-20 w-20 rounded-full bg-cyan-500/10 blur-xl group-hover/asset:bg-cyan-500/20 transition-all duration-500" />
-              <div className="absolute top-3 left-3 h-2 w-2 border-t-2 border-l-2 border-cyan-400/40" />
-              <div className="absolute top-3 right-3 h-2 w-2 border-t-2 border-r-2 border-cyan-400/40" />
-              <div className="absolute bottom-3 left-3 h-2 w-2 border-b-2 border-l-2 border-cyan-400/40" />
-              <div className="absolute bottom-3 right-3 h-2 w-2 border-b-2 border-r-2 border-cyan-400/40" />
-              <div className="z-10 text-center space-y-2">
-                <HelpCircle className="h-6 w-6 text-cyan-400/50 mx-auto animate-bounce" />
-                <span className="text-[9px] font-bold text-slate-500 font-mono tracking-widest uppercase block">
-                  3D WEB3 ILLUSTRATION PLACEHOLDER
-                </span>
+              
+              {/* Corner Brackets */}
+              <div className="absolute top-3 left-3 h-2 w-2 border-t-2 border-l-2 border-cyan-400/40 z-10" />
+              <div className="absolute top-3 right-3 h-2 w-2 border-t-2 border-r-2 border-cyan-400/40 z-10" />
+              <div className="absolute bottom-3 left-3 h-2 w-2 border-b-2 border-l-2 border-cyan-400/40 z-10" />
+              <div className="absolute bottom-3 right-3 h-2 w-2 border-b-2 border-r-2 border-cyan-400/40 z-10" />
+              
+              <div className="relative w-full h-full p-4 z-0">
+                <Image 
+                  src="/hero-image.png" 
+                  alt="Web3 3D Illustration" 
+                  fill 
+                  className="object-contain p-4 transition-transform duration-700 group-hover/asset:scale-105" 
+                  priority
+                />
               </div>
             </div>
 
