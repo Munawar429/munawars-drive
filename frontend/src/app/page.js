@@ -35,7 +35,9 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
-  Share2
+  Share2,
+  Shield,
+  Globe
 } from "lucide-react";
 
 export default function Home() {
@@ -91,6 +93,8 @@ export default function Home() {
   const { 
     isConnected, 
     connectWallet,
+    walletAddress,
+    networkName,
     getMyFilesFromChain, 
     getSharedFilesFromChain, 
     verifyFileIntegrityOnChain 
@@ -300,28 +304,49 @@ export default function Home() {
           .animate-laser-stream {
             animation: laserStream 6s linear infinite;
           }
+          @keyframes floatCard {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+          .animate-float-card {
+            animation: floatCard 6s ease-in-out infinite;
+          }
+          @keyframes hoverPulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.8); }
+          }
+          .animate-hover-pulse:hover {
+            animation: hoverPulseGlow 2s ease-in-out infinite;
+          }
         `}} />
         
+        {/* Minimalist Top Navbar */}
+        <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-6 md:px-12 pointer-events-auto">
+          <div className="flex items-center gap-3">
+            <div className="relative h-9 w-9 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+              <Folder className="h-4.5 w-4.5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
+            </div>
+            <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
+              Munawar's Drive
+            </span>
+          </div>
+          <nav className="hidden md:flex items-center gap-8 text-[11px] font-semibold text-slate-400 font-mono tracking-wider">
+            <a href="#home" className="hover:text-cyan-400 transition-colors duration-300">Home</a>
+            <a href="#features" className="hover:text-cyan-400 transition-colors duration-300">Features</a>
+            <a href="#docs" className="hover:text-cyan-400 transition-colors duration-300">Docs</a>
+            <a href="#github" className="hover:text-cyan-400 transition-colors duration-300">GitHub</a>
+            <a href="#contact" className="hover:text-cyan-400 transition-colors duration-300">Contact</a>
+          </nav>
+        </header>
+
         {/* Left Panel (Brand & Value Proposition) */}
-        <div className="relative hidden lg:flex flex-col justify-between p-12 bg-slate-950 border-r border-white/5 overflow-hidden select-none">
+        <div className="relative hidden lg:flex flex-col justify-between p-12 pt-28 bg-slate-950 border-r border-white/5 overflow-hidden select-none">
           {/* Animated Background Layers */}
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.1),transparent_60%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
             <div className="absolute inset-0 grid-bg opacity-15 animate-grid-pan" />
             {/* Floating Ambient Glow Orb */}
             <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[120px] animate-float-1" />
-          </div>
-
-          {/* Logo & Header */}
-          <div className="flex items-center gap-3 z-10">
-            <div className="relative h-10 w-10 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-              <Folder className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
-                Munawar's Drive
-              </h1>
-            </div>
           </div>
 
           {/* Main Proposition Details */}
@@ -370,6 +395,9 @@ export default function Home() {
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Encryption keys are generated dynamically in-browser. Your data is private by default and completely invisible to server operators.
                   </p>
+                  <span className="text-[10px] text-cyan-400 font-mono tracking-wide mt-1.5 block opacity-85 group-hover:opacity-100 transition-opacity">
+                    ➤ Only YOU can access your data — not even us.
+                  </span>
                 </div>
               </div>
 
@@ -382,6 +410,9 @@ export default function Home() {
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Permissions are recorded directly on the blockchain, creating a tamper-proof decentralized Access Control List (ACL).
                   </p>
+                  <span className="text-[10px] text-cyan-400 font-mono tracking-wide mt-1.5 block opacity-85 group-hover:opacity-100 transition-opacity">
+                    ➤ Immutable ACL managed entirely by smart contracts.
+                  </span>
                 </div>
               </div>
 
@@ -394,6 +425,9 @@ export default function Home() {
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Symmetric AES-GCM and asymmetric RSA-OAEP keys are combined to protect transfers and permission handshakes.
                   </p>
+                  <span className="text-[10px] text-cyan-400 font-mono tracking-wide mt-1.5 block opacity-85 group-hover:opacity-100 transition-opacity">
+                    ➤ Ultra-secure hybrid keys generated and stored client-side.
+                  </span>
                 </div>
               </div>
             </div>
@@ -411,7 +445,7 @@ export default function Home() {
         </div>
 
         {/* Right Panel (The Auth Card) */}
-        <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 bg-[#060b18] overflow-hidden">
+        <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 pt-24 bg-[#060b18] overflow-hidden">
           {/* Animated Background Layers */}
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(6,182,212,0.08),transparent_60%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
@@ -421,21 +455,8 @@ export default function Home() {
           </div>
 
           {/* Compact Glassmorphic Login Card */}
-          <div className="w-full max-w-md relative rounded-3xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.6)] glow-border z-10">
+          <div className="w-full max-w-md relative rounded-3xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.6)] glow-border z-10 animate-float-card">
             
-            {/* Small branding logo display on mobile only */}
-            <div className="flex flex-col items-center lg:hidden mb-8">
-              <div className="relative h-12 w-12 rounded-xl bg-slate-950/85 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.2)] mb-3">
-                <Folder className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
-                Munawar's Drive
-              </h1>
-              <p className="text-[9px] font-bold text-cyan-400/80 font-mono tracking-wider uppercase mt-1">
-                Decentralized Storage
-              </p>
-            </div>
-
             {/* Error banner */}
             {formError && (
               <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
@@ -463,11 +484,61 @@ export default function Home() {
                 </p>
               </div>
 
+              {/* 3-Step Visual Indicator */}
+              <div className="flex items-center justify-between w-full max-w-sm mx-auto pt-2 text-slate-400 font-mono text-[9px] tracking-wider uppercase">
+                <div className={`flex flex-col items-center gap-1.5 flex-1 ${!isConnected ? "text-cyan-400 font-bold" : "text-emerald-400/80"}`}>
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center border text-[9px] font-bold transition-all duration-300 ${
+                    isConnected 
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                      : "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse"
+                  }`}>
+                    {isConnected ? "✓" : "1"}
+                  </div>
+                  <span>Connect</span>
+                </div>
+                
+                <div className={`h-[1px] w-8 bg-gradient-to-r ${isConnected ? "from-emerald-500/50 to-cyan-500/50" : "from-slate-800 to-slate-800"} shrink-0`} />
+                
+                <div className={`flex flex-col items-center gap-1.5 flex-1 ${isConnected && !isAuthenticated ? "text-cyan-400 font-bold" : "text-slate-500"}`}>
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center border text-[9px] font-bold transition-all duration-300 ${
+                    isConnected && !isAuthenticated 
+                      ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse" 
+                      : "border-slate-800 bg-slate-900/50 text-slate-500"
+                  }`}>
+                    2
+                  </div>
+                  <span>Sign Msg</span>
+                </div>
+                
+                <div className="h-[1px] w-8 bg-slate-800 shrink-0" />
+                
+                <div className="flex flex-col items-center gap-1.5 flex-1 text-slate-500">
+                  <div className="h-6 w-6 rounded-full flex items-center justify-center border border-slate-800 bg-slate-900/50 text-slate-500 text-[9px] font-bold">
+                    3
+                  </div>
+                  <span>Access</span>
+                </div>
+              </div>
+
+              {/* Connected Wallet State Pill */}
+              {isConnected && walletAddress && (
+                <div className="flex items-center justify-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md max-w-xs mx-auto">
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-slate-300 font-mono">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Ethereum {networkName || "Sepolia"}
+                  </span>
+                  <span className="text-slate-700">|</span>
+                  <span className="text-[10px] text-cyan-400 font-mono bg-slate-950/40 px-2 py-0.5 rounded border border-cyan-500/10">
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  </span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleWalletAuth}
                 disabled={authLoading}
-                className="w-full h-12 rounded-xl animate-shimmer-sweep hover-pulse-glow text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
+                className="w-full h-12 rounded-xl animate-shimmer-sweep animate-hover-pulse text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
               >
                 {authLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -477,20 +548,25 @@ export default function Home() {
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <UserCheck className="h-4 w-4" />
-                    Sign Challenge via Web3 Wallet
+                    Connect Wallet & Unlock Vault
                   </span>
                 )}
               </button>
 
-              {/* Sleek, minimalist text hint below the button */}
-              <p className="text-[10px] text-slate-500 leading-normal max-w-xs mx-auto">
-                🔒 <b>Zero-Knowledge:</b> No password required. Your private signature derives your storage encryption keys locally inside your browser context.
-              </p>
-
               {/* Trust Badges */}
-              <div className="pt-4 border-t border-white/5 flex items-center justify-center gap-1.5 opacity-40 text-[9px] text-slate-500 font-mono tracking-widest uppercase">
-                <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
-                <span>Secured via Ethereum & IPFS</span>
+              <div className="pt-6 border-t border-white/5 grid grid-cols-3 gap-2 text-[9px] font-mono uppercase tracking-wider text-slate-400">
+                <div className="flex flex-col items-center gap-1.5 text-center">
+                  <Lock className="h-4 w-4 text-cyan-400/80" />
+                  <span>E2E Encrypted</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 text-center border-x border-white/5">
+                  <Shield className="h-4 w-4 text-cyan-400/80" />
+                  <span>No Server Access</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 text-center">
+                  <Globe className="h-4 w-4 text-cyan-400/80" />
+                  <span>Decentralized (IPFS)</span>
+                </div>
               </div>
             </div>
           </div>
