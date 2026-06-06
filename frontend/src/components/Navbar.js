@@ -9,7 +9,9 @@ import {
   Wallet, 
   Activity, 
   HelpCircle,
-  Link2
+  Link2,
+  Copy,
+  Check
 } from "lucide-react";
 
 export default function Navbar({ activeTab }) {
@@ -23,6 +25,17 @@ export default function Navbar({ activeTab }) {
   } = useWeb3();
   
   const { authType, user } = useAuth();
+
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyAddress = () => {
+    const addr = walletAddress || user?.walletAddress;
+    if (addr) {
+      navigator.clipboard.writeText(addr);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const [ensName, setEnsName] = React.useState("");
   const [ensAvatar, setEnsAvatar] = React.useState("");
@@ -140,10 +153,19 @@ export default function Navbar({ activeTab }) {
 
         {/* Wallet Connector */}
         {authType === "wallet" || isConnected ? (
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm font-semibold text-slate-200 shadow-sm">
+          <button
+            onClick={handleCopyAddress}
+            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sm font-semibold text-slate-200 shadow-sm transition-all duration-200 cursor-pointer text-left"
+            title="Click to copy full wallet address"
+          >
             {renderProfilePicture()}
             <span className="font-mono">{ensName || formatAddress(walletAddress || user?.walletAddress)}</span>
-          </div>
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-slate-500 hover:text-cyan-400 transition-colors" />
+            )}
+          </button>
         ) : (
           <button
             onClick={connectWallet}
