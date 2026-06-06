@@ -300,9 +300,8 @@ export default function Home() {
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.1),transparent_60%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
             <div className="absolute inset-0 grid-bg opacity-15 animate-grid-pan" />
-            {/* Floating Orbs */}
-            <div className="absolute top-1/4 left-1/4 w-[250px] h-[250px] rounded-full bg-cyan-500/5 blur-[80px] animate-float-1" />
-            <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-500/5 blur-[100px] animate-float-2" />
+            {/* Floating Ambient Glow Orb */}
+            <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-cyan-500/20 blur-[120px] animate-float-1" />
           </div>
 
           {/* Logo & Header */}
@@ -318,7 +317,7 @@ export default function Home() {
           </div>
 
           {/* Main Proposition Details */}
-          <div className="my-auto space-y-8 z-10 max-w-md">
+          <div className="my-auto space-y-6 z-10 max-w-md">
             <div>
               <span className="text-[10px] font-bold text-cyan-400 font-mono tracking-[0.25em] uppercase">
                 Next-Gen Storage
@@ -329,6 +328,22 @@ export default function Home() {
               <p className="text-slate-400 text-sm mt-3 leading-relaxed">
                 A high-performance zero-knowledge storage vault secured by smart contracts and client-side cryptography.
               </p>
+            </div>
+
+            {/* Visual Asset Container (Holographic Placeholder for 3D Illustration) */}
+            <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden flex items-center justify-center group/asset hover:border-cyan-500/30 transition-all duration-500 shadow-[0_0_20px_rgba(6,182,212,0.02)] hover:shadow-[0_0_30px_rgba(6,182,212,0.08)]">
+              <div className="absolute inset-0 grid-bg opacity-20" />
+              <div className="absolute h-20 w-20 rounded-full bg-cyan-500/10 blur-xl group-hover/asset:bg-cyan-500/20 transition-all duration-500" />
+              <div className="absolute top-3 left-3 h-2 w-2 border-t-2 border-l-2 border-cyan-400/40" />
+              <div className="absolute top-3 right-3 h-2 w-2 border-t-2 border-r-2 border-cyan-400/40" />
+              <div className="absolute bottom-3 left-3 h-2 w-2 border-b-2 border-l-2 border-cyan-400/40" />
+              <div className="absolute bottom-3 right-3 h-2 w-2 border-b-2 border-r-2 border-cyan-400/40" />
+              <div className="z-10 text-center space-y-2">
+                <HelpCircle className="h-6 w-6 text-cyan-400/50 mx-auto animate-bounce" />
+                <span className="text-[9px] font-bold text-slate-500 font-mono tracking-widest uppercase block">
+                  3D WEB3 ILLUSTRATION PLACEHOLDER
+                </span>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -376,14 +391,17 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Subtle Vertical Gradient Divider */}
+        <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent hidden lg:block z-20 pointer-events-none" />
+
         {/* Right Panel (The Auth Card) */}
         <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 bg-[#060b18] overflow-hidden">
           {/* Animated Background Layers */}
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(6,182,212,0.08),transparent_60%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
             <div className="absolute inset-0 grid-bg opacity-10 animate-grid-pan" />
-            {/* Floating Orb */}
-            <div className="absolute top-1/3 right-1/4 w-[350px] h-[350px] rounded-full bg-cyan-500/5 blur-[90px] animate-float-3" />
+            {/* Floating Ambient Glow Orb */}
+            <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] rounded-full bg-blue-600/20 blur-[120px] animate-float-3" />
           </div>
 
           {/* Compact Glassmorphic Login Card */}
