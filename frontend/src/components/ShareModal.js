@@ -7,6 +7,7 @@ import { X, Send, Coins, ShieldCheck, Loader2 } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
 import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA } from "../utils/crypto.js";
+import { ethers } from "ethers";
 
 export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [targetAddress, setTargetAddress] = useState("");
@@ -14,6 +15,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [estimatedGas, setEstimatedGas] = useState("0.00");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const [resolvedAddress, setResolvedAddress] = useState("");
+  const [isResolvingEns, setIsResolvingEns] = useState(false);
 
   const { shareFileOnChain, estimateGasFees } = useWeb3();
   const { logActivity, masterSeed, user } = useAuth();
@@ -35,9 +39,54 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     
     // Reset state
     setTargetAddress("");
+    setResolvedAddress("");
+    setIsResolvingEns(false);
     setErrorMessage("");
     setSuccessMessage("");
   }, [isOpen, file, estimateGasFees]);
+
+  // Resolve ENS name if targetAddress matches the pattern
+  useEffect(() => {
+    const resolveInput = async () => {
+      setErrorMessage("");
+      setResolvedAddress("");
+      
+      const input = targetAddress.trim();
+      if (!input) return;
+
+      if (input.toLowerCase().endsWith(".eth")) {
+        setIsResolvingEns(true);
+        try {
+          if (typeof window !== "undefined" && window.ethereum) {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            console.log(`🔍 [ENS] Resolving ENS name: ${input}...`);
+            const address = await provider.resolveName(input);
+            if (address) {
+              setResolvedAddress(address);
+              console.log(`✅ [ENS] Resolved ${input} to: ${address}`);
+            } else {
+              setErrorMessage("Invalid ENS name or address.");
+            }
+          } else {
+            setErrorMessage("Ethereum provider not found.");
+          }
+        } catch (e) {
+          console.error("ENS Resolution Error:", e);
+          setErrorMessage("Failed to resolve ENS name.");
+        }
+        setIsResolvingEns(false);
+      } else if (input.startsWith("0x") && input.length === 42) {
+        // Direct address
+        setResolvedAddress(input);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      resolveInput();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [targetAddress]);
 
   if (!isOpen || !file) return null;
 
@@ -46,18 +95,22 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const normalizedTarget = targetAddress.toLowerCase().trim();
+    if (isResolvingEns) {
+      setErrorMessage("Please wait for ENS resolution to complete.");
+      return;
+    }
+
+    if (!resolvedAddress) {
+      setErrorMessage("Invalid ENS name or address.");
+      return;
+    }
+
+    const normalizedTarget = resolvedAddress.toLowerCase().trim();
     const ownerAddress = user?.walletAddress?.toLowerCase();
 
     // Prevent sharing with oneself
     if (ownerAddress && normalizedTarget === ownerAddress) {
       setErrorMessage("You cannot share a file with your own wallet address.");
-      return;
-    }
-
-    // Validate address format
-    if (!normalizedTarget.startsWith("0x") || normalizedTarget.length !== 42) {
-      setErrorMessage("Please enter a valid 42-character Ethereum wallet address (0x...)");
       return;
     }
 
@@ -167,17 +220,28 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
             {/* Target Input */}
             <div className="space-y-1.5">
               <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
-                Target Wallet Address
+                Target Wallet Address or ENS Name
               </label>
               <input
                 type="text"
                 value={targetAddress}
                 onChange={(e) => setTargetAddress(e.target.value)}
-                placeholder="0x..."
-                className="w-full glass-input"
+                placeholder="0x... or name.eth"
+                className="w-full glass-input font-mono"
                 disabled={isProcessing}
                 required
               />
+              {isResolvingEns && (
+                <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1.5 animate-pulse mt-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Resolving ENS name...</span>
+                </div>
+              )}
+              {!isResolvingEns && resolvedAddress && targetAddress.toLowerCase().endsWith(".eth") && (
+                <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-slate-950/60 p-2 rounded border border-emerald-500/10 truncate">
+                  🟢 Resolved: {resolvedAddress}
+                </div>
+              )}
             </div>
 
             {/* Warning description */}

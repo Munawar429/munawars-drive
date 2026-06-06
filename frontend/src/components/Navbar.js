@@ -4,6 +4,7 @@ import React from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatAddress } from "../utils/helpers.js";
+import { ethers } from "ethers";
 import { 
   Wallet, 
   Activity, 
@@ -22,6 +23,73 @@ export default function Navbar({ activeTab }) {
   } = useWeb3();
   
   const { authType, user } = useAuth();
+
+  const [ensName, setEnsName] = React.useState("");
+  const [ensAvatar, setEnsAvatar] = React.useState("");
+
+  React.useEffect(() => {
+    const resolveENS = async () => {
+      const address = walletAddress || user?.walletAddress;
+      if (!address || typeof window === "undefined" || !window.ethereum) {
+        setEnsName("");
+        setEnsAvatar("");
+        return;
+      }
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const name = await provider.lookupAddress(address);
+        if (name) {
+          setEnsName(name);
+          try {
+            const avatar = await provider.getAvatar(name);
+            if (avatar) {
+              setEnsAvatar(avatar);
+            } else {
+              setEnsAvatar("");
+            }
+          } catch (avatarErr) {
+            console.warn("Failed to fetch ENS avatar:", avatarErr);
+            setEnsAvatar("");
+          }
+        } else {
+          setEnsName("");
+          setEnsAvatar("");
+        }
+      } catch (e) {
+        console.warn("Reverse ENS resolution failed:", e);
+        setEnsName("");
+        setEnsAvatar("");
+      }
+    };
+    resolveENS();
+  }, [walletAddress, user?.walletAddress]);
+
+  // Default gradient blockie / profile placeholder
+  const renderProfilePicture = () => {
+    if (ensAvatar) {
+      return (
+        <img 
+          src={ensAvatar} 
+          alt="ENS Avatar" 
+          className="h-6 w-6 rounded-full object-cover border border-cyan-500/30"
+        />
+      );
+    }
+    const addr = walletAddress || user?.walletAddress || "0x0000000000000000000000000000000000000000";
+    const colors = [
+      "from-cyan-500 to-blue-500",
+      "from-indigo-500 to-purple-500",
+      "from-blue-500 to-indigo-500",
+      "from-cyan-400 to-indigo-600",
+      "from-purple-500 to-pink-500"
+    ];
+    const hash = addr.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colorClass = colors[hash % colors.length];
+
+    return (
+      <div className={`h-6 w-6 rounded-full bg-gradient-to-br ${colorClass} border border-white/10`} />
+    );
+  };
 
   const getTitle = () => {
     switch (activeTab) {
@@ -73,8 +141,8 @@ export default function Navbar({ activeTab }) {
         {/* Wallet Connector */}
         {authType === "wallet" || isConnected ? (
           <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm font-semibold text-slate-200 shadow-sm">
-            <Wallet className="h-4 w-4 text-cyan-400" />
-            <span className="font-mono">{formatAddress(walletAddress || user?.walletAddress)}</span>
+            {renderProfilePicture()}
+            <span className="font-mono">{ensName || formatAddress(walletAddress || user?.walletAddress)}</span>
           </div>
         ) : (
           <button
