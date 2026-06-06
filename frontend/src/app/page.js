@@ -293,6 +293,13 @@ export default function Home() {
           .hover-pulse-glow:hover {
             box-shadow: 0 0 25px rgba(6, 182, 212, 0.45);
           }
+          @keyframes laserStream {
+            0% { transform: translateY(-128px); }
+            100% { transform: translateY(100vh); }
+          }
+          .animate-laser-stream {
+            animation: laserStream 6s linear infinite;
+          }
         `}} />
         
         {/* Left Panel (Brand & Value Proposition) */}
@@ -398,8 +405,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Subtle Vertical Gradient Divider */}
-        <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent hidden lg:block z-20 pointer-events-none" />
+        {/* Animated Vertical Divider / Laser Track */}
+        <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-white/5 hidden lg:block z-20 pointer-events-none overflow-hidden">
+          <div className="absolute left-[-0.5px] w-[2px] h-32 bg-gradient-to-b from-transparent via-cyan-500 to-transparent shadow-[0_0_10px_rgba(6,182,212,0.8)] animate-laser-stream" />
+        </div>
 
         {/* Right Panel (The Auth Card) */}
         <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 bg-[#060b18] overflow-hidden">
