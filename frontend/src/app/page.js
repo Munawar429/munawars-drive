@@ -268,6 +268,10 @@ export default function Home() {
             0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
             50% { transform: translateY(-20px) scale(1.05); opacity: 0.6; }
           }
+          @keyframes shimmerSweep {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
           .animate-grid-pan {
             animation: gridPan 25s linear infinite;
           }
@@ -279,6 +283,14 @@ export default function Home() {
           }
           .animate-float-3 {
             animation: floatParticle 11s ease-in-out infinite;
+          }
+          .animate-shimmer-sweep {
+            background: linear-gradient(90deg, #2563eb, #06b6d4, #1e40af, #2563eb);
+            background-size: 200% auto;
+            animation: shimmerSweep 4s linear infinite;
+          }
+          .hover-pulse-glow:hover {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.45);
           }
         `}} />
         
@@ -320,37 +332,37 @@ export default function Home() {
             </div>
 
             <div className="space-y-6">
-              <div className="flex gap-4">
-                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+              <div className="group flex gap-4 cursor-pointer">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-cyan-300 group-hover:border-cyan-500/30 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-200">Zero-Knowledge Storage</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <h4 className="text-sm font-semibold text-slate-200 transition-colors duration-300 group-hover:text-cyan-300">Zero-Knowledge Storage</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Encryption keys are generated dynamically in-browser. Your data is private by default and completely invisible to server operators.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+              <div className="group flex gap-4 cursor-pointer">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-cyan-300 group-hover:border-cyan-500/30 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                   <KeyRound className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-200">Decentralized Access Control</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <h4 className="text-sm font-semibold text-slate-200 transition-colors duration-300 group-hover:text-cyan-300">Decentralized Access Control</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Permissions are recorded directly on the blockchain, creating a tamper-proof decentralized Access Control List (ACL).
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+              <div className="group flex gap-4 cursor-pointer">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-cyan-300 group-hover:border-cyan-500/30 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                   <HardDrive className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-200">End-to-End Hybrid Encryption</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <h4 className="text-sm font-semibold text-slate-200 transition-colors duration-300 group-hover:text-cyan-300">End-to-End Hybrid Encryption</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed transition-colors duration-300 group-hover:text-slate-300">
                     Symmetric AES-GCM and asymmetric RSA-OAEP keys are combined to protect transfers and permission handshakes.
                   </p>
                 </div>
@@ -421,7 +433,7 @@ export default function Home() {
                 type="button"
                 onClick={handleWalletAuth}
                 disabled={authLoading}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
+                className="w-full h-12 rounded-xl animate-shimmer-sweep hover-pulse-glow text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
               >
                 {authLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -440,6 +452,12 @@ export default function Home() {
               <p className="text-[10px] text-slate-500 leading-normal max-w-xs mx-auto">
                 🔒 <b>Zero-Knowledge:</b> No password required. Your private signature derives your storage encryption keys locally inside your browser context.
               </p>
+
+              {/* Trust Badges */}
+              <div className="pt-4 border-t border-white/5 flex items-center justify-center gap-1.5 opacity-40 text-[9px] text-slate-500 font-mono tracking-widest uppercase">
+                <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
+                <span>Secured via Ethereum & IPFS</span>
+              </div>
             </div>
           </div>
         </div>
