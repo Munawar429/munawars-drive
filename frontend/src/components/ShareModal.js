@@ -181,7 +181,24 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       const receipt = await shareFileOnChain(Number(file.id), normalizedTarget);
       
       console.log("🎉 Share transaction confirmed:", receipt.hash);
-      setSuccessMessage(`Access successfully granted to: ${targetAddress.slice(0,6)}...${targetAddress.slice(-4)}`);
+      
+      // Dynamically add the new share to local state for immediate render
+      const newShare = {
+        recipientAddress: normalizedTarget,
+        timestamp: new Date().toISOString()
+      };
+      setViewers(prev => {
+        if (prev.some(v => v.recipientAddress.toLowerCase() === normalizedTarget.toLowerCase())) {
+          return prev;
+        }
+        return [newShare, ...prev];
+      });
+
+      // Clear input fields
+      setTargetAddress("");
+      setResolvedAddress("");
+
+      setSuccessMessage(`Access successfully granted to: ${normalizedTarget.slice(0, 10)}...${normalizedTarget.slice(-8)}`);
       
       // Log event
       await logActivity(
@@ -196,11 +213,12 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         onShareSuccess();
       }
 
-      // Re-fetch viewers list
+      // Re-fetch viewers list in background to ensure sync
       await fetchViewers();
 
+      // Clear success message after 3 seconds without closing the modal
       setTimeout(() => {
-        onClose();
+        setSuccessMessage("");
       }, 3000);
 
     } catch (err) {
@@ -276,18 +294,18 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
           </button>
         </div>
 
-        {/* Success View */}
-        {successMessage ? (
-          <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-6 flex flex-col items-center text-center my-4">
-            <ShieldCheck className="h-10 w-10 text-emerald-400 mb-2" />
-            <h4 className="text-sm font-bold text-slate-200">Vault Access Authorized!</h4>
-            <p className="text-xs text-slate-400 mt-2">
+        {/* Success Alert Banner */}
+        {successMessage && (
+          <div className="mb-4 border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-3 flex items-center gap-2.5 text-xs text-slate-300">
+            <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+            <div className="truncate flex-1">
+              <span className="font-bold text-emerald-400">Success: </span>
               {successMessage}
-            </p>
+            </div>
           </div>
-        ) : (
-          <>
-            <form onSubmit={handleShare} className="space-y-4">
+        )}
+
+        <form onSubmit={handleShare} className="space-y-4">
               {/* Target Input */}
               <div className="space-y-1.5">
                 <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
@@ -402,8 +420,6 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
                 </div>
               )}
             </div>
-          </>
-        )}
       </div>
     </div>
   );
