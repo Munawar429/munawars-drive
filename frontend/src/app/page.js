@@ -26,7 +26,6 @@ import {
   Upload,
   UserCheck,
   Lock,
-  Mail,
   Loader2,
   HardDrive,
   Copy,
@@ -35,7 +34,6 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
-  Sparkles,
   Share2
 } from "lucide-react";
 
@@ -45,9 +43,6 @@ export default function Home() {
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   
   // Auth Form State
-  const [authTab, setAuthTab] = useState("login"); // 'login' | 'register' | 'wallet'
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -87,8 +82,6 @@ export default function Home() {
     user, 
     masterSeed, 
     authType, 
-    loginWithEmail, 
-    registerWithEmail, 
     loginWithWallet,
     logout,
     logActivity 
@@ -178,23 +171,6 @@ export default function Home() {
   // --------------------------------------------------
   // AUTHENTICATION AND SIGN-IN LAYOUT
   // --------------------------------------------------
-  const handleAuthSubmit = async (e) => {
-    e.preventDefault();
-    setFormError("");
-    setAuthLoading(true);
-
-    try {
-      if (authTab === "login") {
-        await loginWithEmail(email, password);
-      } else if (authTab === "register") {
-        await registerWithEmail(email, password);
-      }
-    } catch (err) {
-      setFormError(err.message || "Authentication failed. Try again.");
-    }
-    setAuthLoading(false);
-  };
-
   const handleWalletAuth = async () => {
     setFormError("");
     setAuthLoading(true);
@@ -309,150 +285,56 @@ export default function Home() {
           {/* Glass Pane Container */}
           <div className="relative rounded-2xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] glow-border">
             
-            {/* Form Toggle buttons as crystal block tab selectors */}
-            <div className="flex gap-2 rounded-xl bg-slate-950/60 p-1.5 border border-white/5 mb-6">
-              <button
-                type="button"
-                onClick={() => { setAuthTab("login"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                  authTab === "login"
-                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
-                }`}
-              >
-                <Mail className="h-3.5 w-3.5" />
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAuthTab("register"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                  authTab === "register"
-                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
-                }`}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Create Vault
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAuthTab("wallet"); setFormError(""); }}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                  authTab === "wallet"
-                    ? "bg-gradient-to-r from-cyan-950/50 to-blue-950/50 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                    : "text-slate-500 hover:text-slate-300 bg-transparent border border-transparent"
-                }`}
-              >
-                <Lock className="h-3.5 w-3.5" />
-                Web3 Wallet
-              </button>
-            </div>
-
             {/* Error banner */}
             {formError && (
-              <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
                 ⚠️ {formError}
               </div>
             )}
 
-            {/* Conventional Login Form */}
-            {(authTab === "login" || authTab === "register") && (
-              <form onSubmit={handleAuthSubmit} className="space-y-5">
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Email Address</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full glass-input"
-                    placeholder="email@provider.com"
-                    disabled={authLoading}
-                    required
-                  />
+            {/* Web3 Wallet Auth View */}
+            <div className="text-center py-4 space-y-6">
+              {/* Articulated 3D holographic lock */}
+              <div className="relative h-20 w-20 flex items-center justify-center mx-auto">
+                {/* Rotating Orbit rings */}
+                <div className="absolute inset-0 rounded-full border border-dashed border-cyan-500/20 animate-[spin_12s_linear_infinite]" />
+                <div className="absolute inset-2 rounded-full border border-dashed border-blue-500/30 animate-[spin_8s_linear_infinite_reverse]" />
+                {/* Padlock Glow Shield */}
+                <div className="absolute h-14 w-14 rounded-2xl bg-slate-950/80 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-pulse">
+                  <Lock className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                 </div>
-                
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Vault Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full glass-input"
-                    placeholder="••••••••••••"
-                    disabled={authLoading}
-                    required
-                  />
-                </div>
-
-                <p className="text-[10px] text-slate-400 bg-slate-950/45 p-3 rounded-xl border border-slate-900 leading-normal">
-                  🔐 <b>Zero-Knowledge Security:</b> We derive your 256-bit AES master seed entirely inside your browser. Your password is never sent to the server in plaintext, and our database never stores your decryption keys.
-                </p>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full mt-4 h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
-                >
-                  {authLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-white" />
-                      Decrypting Vault...
-                    </span>
-                  ) : authTab === "login" ? (
-                    "Authorize & Open Vault"
-                  ) : (
-                    "Generate Master Seed & Create Vault"
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* Web3 Wallet Auth Tab */}
-            {authTab === "wallet" && (
-              <div className="text-center py-4 space-y-6">
-                {/* Articulated 3D holographic lock */}
-                <div className="relative h-20 w-20 flex items-center justify-center mx-auto">
-                  {/* Rotating Orbit rings */}
-                  <div className="absolute inset-0 rounded-full border border-dashed border-cyan-500/20 animate-[spin_12s_linear_infinite]" />
-                  <div className="absolute inset-2 rounded-full border border-dashed border-blue-500/30 animate-[spin_8s_linear_infinite_reverse]" />
-                  {/* Padlock Glow Shield */}
-                  <div className="absolute h-14 w-14 rounded-2xl bg-slate-950/80 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-pulse">
-                    <Lock className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-slate-200">Sign In with Ethereum</h4>
-                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-normal">
-                    Authorize Web3 Wallet. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
-                  </p>
-                </div>
-
-                {/* Cyber-Luminous Warning Notification */}
-                <p className="text-[10px] text-amber-300 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 leading-normal text-left max-w-md mx-auto shadow-[inset_0_1px_10px_rgba(245,158,11,0.05)]">
-                  💡 <b>No Password Required:</b> By connecting and signing with your private key, you derive the AES-GCM decryption key for all your private files natively in-browser.
-                </p>
-
-                <button
-                  onClick={handleWalletAuth}
-                  disabled={authLoading}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
-                >
-                  {authLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-white" />
-                      Verifying Signature...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <UserCheck className="h-4 w-4" />
-                      Sign Challenge via Web3 Wallet
-                    </span>
-                  )}
-                </button>
               </div>
-            )}
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-200">Sign In with Ethereum</h4>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-normal">
+                  Authorize Web3 Wallet. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
+                </p>
+              </div>
+
+              {/* Cyber-Luminous Warning Notification */}
+              <p className="text-[10px] text-amber-300 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 leading-normal text-left max-w-md mx-auto shadow-[inset_0_1px_10px_rgba(245,158,11,0.05)]">
+                💡 <b>No Password Required:</b> By connecting and signing with your private key, you derive the AES-GCM decryption key for all your private files natively in-browser.
+              </p>
+
+              <button
+                onClick={handleWalletAuth}
+                disabled={authLoading}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
+              >
+                {authLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    Verifying Signature...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <UserCheck className="h-4 w-4" />
+                    Sign Challenge via Web3 Wallet
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
