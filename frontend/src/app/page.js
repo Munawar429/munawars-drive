@@ -259,11 +259,39 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden bg-[#040814]">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes gridPan {
+            0% { background-position: 0px 0px; }
+            100% { background-position: 40px 40px; }
+          }
+          @keyframes floatParticle {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+            50% { transform: translateY(-20px) scale(1.05); opacity: 0.6; }
+          }
+          .animate-grid-pan {
+            animation: gridPan 25s linear infinite;
+          }
+          .animate-float-1 {
+            animation: floatParticle 9s ease-in-out infinite;
+          }
+          .animate-float-2 {
+            animation: floatParticle 14s ease-in-out infinite;
+          }
+          .animate-float-3 {
+            animation: floatParticle 11s ease-in-out infinite;
+          }
+        `}} />
+        
         {/* Left Panel (Brand & Value Proposition) */}
         <div className="relative hidden lg:flex flex-col justify-between p-12 bg-slate-950 border-r border-white/5 overflow-hidden select-none">
-          {/* Radial Mesh Effect */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.08),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.08),transparent_50%)] pointer-events-none" />
-          <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
+          {/* Animated Background Layers */}
+          <div className="absolute inset-0 z-0 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.1),transparent_60%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
+            <div className="absolute inset-0 grid-bg opacity-15 animate-grid-pan" />
+            {/* Floating Orbs */}
+            <div className="absolute top-1/4 left-1/4 w-[250px] h-[250px] rounded-full bg-cyan-500/5 blur-[80px] animate-float-1" />
+            <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-500/5 blur-[100px] animate-float-2" />
+          </div>
 
           {/* Logo & Header */}
           <div className="flex items-center gap-3 z-10">
@@ -338,9 +366,13 @@ export default function Home() {
 
         {/* Right Panel (The Auth Card) */}
         <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 bg-[#060b18] overflow-hidden">
-          {/* Radial Mesh Effect */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(6,182,212,0.06),transparent_50%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.06),transparent_50%)] pointer-events-none" />
-          <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none" />
+          {/* Animated Background Layers */}
+          <div className="absolute inset-0 z-0 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(6,182,212,0.08),transparent_60%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.08),transparent_60%)]" />
+            <div className="absolute inset-0 grid-bg opacity-10 animate-grid-pan" />
+            {/* Floating Orb */}
+            <div className="absolute top-1/3 right-1/4 w-[350px] h-[350px] rounded-full bg-cyan-500/5 blur-[90px] animate-float-3" />
+          </div>
 
           {/* Compact Glassmorphic Login Card */}
           <div className="w-full max-w-md relative rounded-3xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.6)] glow-border z-10">
