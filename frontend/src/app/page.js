@@ -258,42 +258,115 @@ export default function Home() {
   // Render Landing & Authentication View
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#040814] flex flex-col justify-center py-12 px-6 lg:px-8 relative grid-bg overflow-hidden">
-        {/* Glow Spheres */}
-        <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] bg-cyan-500/10 rounded-full filter blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] bg-indigo-500/10 rounded-full filter blur-[130px] pointer-events-none" />
+      <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden bg-[#040814]">
+        {/* Left Panel (Brand & Value Proposition) */}
+        <div className="relative hidden lg:flex flex-col justify-between p-12 bg-slate-950 border-r border-white/5 overflow-hidden select-none">
+          {/* Radial Mesh Effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.08),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.08),transparent_50%)] pointer-events-none" />
+          <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
 
-        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
-          {/* Logo container as a floating multi-faceted widget */}
-          <div className="relative mx-auto h-14 w-14 rounded-2xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.2)] mb-6 transition-all duration-300 hover:scale-105 hover:border-cyan-500/50">
-            <Folder className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.8)]" />
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-            </span>
+          {/* Logo & Header */}
+          <div className="flex items-center gap-3 z-10">
+            <div className="relative h-10 w-10 rounded-xl bg-slate-950/80 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+              <Folder className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
+                Munawar's Drive
+              </h1>
+            </div>
           </div>
-          
-          <h2 className="text-3xl font-extrabold bg-gradient-to-r from-cyan-400 via-blue-300 to-white bg-clip-text text-transparent tracking-tight">
-            Munawar's Drive
-          </h2>
-          <p className="mt-2 text-[10px] font-bold text-cyan-400/80 font-mono tracking-[0.2em] uppercase">
-            Blockchain-Based Decentralized Storage System
-          </p>
+
+          {/* Main Proposition Details */}
+          <div className="my-auto space-y-8 z-10 max-w-md">
+            <div>
+              <span className="text-[10px] font-bold text-cyan-400 font-mono tracking-[0.25em] uppercase">
+                Next-Gen Storage
+              </span>
+              <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight mt-2 leading-tight">
+                The Secure Decentralized Cloud for Web3
+              </h2>
+              <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+                A high-performance zero-knowledge storage vault secured by smart contracts and client-side cryptography.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex gap-4">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200">Zero-Knowledge Storage</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Encryption keys are generated dynamically in-browser. Your data is private by default and completely invisible to server operators.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200">Decentralized Access Control</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Permissions are recorded directly on the blockchain, creating a tamper-proof decentralized Access Control List (ACL).
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 shrink-0">
+                  <HardDrive className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200">End-to-End Hybrid Encryption</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Symmetric AES-GCM and asymmetric RSA-OAEP keys are combined to protect transfers and permission handshakes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Copyright */}
+          <div className="text-[10px] text-slate-500 font-mono z-10">
+            © 2026 MUNAWAR'S DRIVE • DECENTRALIZED DATA LAYER
+          </div>
         </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl z-10">
-          {/* Glass Pane Container */}
-          <div className="relative rounded-2xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] glow-border">
+        {/* Right Panel (The Auth Card) */}
+        <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 bg-[#060b18] overflow-hidden">
+          {/* Radial Mesh Effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(6,182,212,0.06),transparent_50%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.06),transparent_50%)] pointer-events-none" />
+          <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none" />
+
+          {/* Compact Glassmorphic Login Card */}
+          <div className="w-full max-w-md relative rounded-3xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.6)] glow-border z-10">
             
+            {/* Small branding logo display on mobile only */}
+            <div className="flex flex-col items-center lg:hidden mb-8">
+              <div className="relative h-12 w-12 rounded-xl bg-slate-950/85 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.2)] mb-3">
+                <Folder className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
+              </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
+                Munawar's Drive
+              </h1>
+              <p className="text-[9px] font-bold text-cyan-400/80 font-mono tracking-wider uppercase mt-1">
+                Decentralized Storage
+              </p>
+            </div>
+
             {/* Error banner */}
             {formError && (
-              <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
+              <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
                 ⚠️ {formError}
               </div>
             )}
 
             {/* Web3 Wallet Auth View */}
-            <div className="text-center py-4 space-y-6">
+            <div className="text-center space-y-6">
               {/* Articulated 3D holographic lock */}
               <div className="relative h-20 w-20 flex items-center justify-center mx-auto">
                 {/* Rotating Orbit rings */}
@@ -305,22 +378,18 @@ export default function Home() {
                 </div>
               </div>
 
-              <div>
-                <h4 className="text-sm font-bold text-slate-200">Sign In with Ethereum</h4>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-normal">
-                  Authorize Web3 Wallet. You will sign a cryptographic challenge to generate a deterministic Master Vault Seed client-side.
+              <div className="space-y-1.5">
+                <h4 className="text-lg font-bold text-slate-100">Sign In with Ethereum</h4>
+                <p className="text-xs text-slate-400 leading-normal max-w-xs mx-auto">
+                  Connect your Web3 wallet and sign a secure challenge to decrypt your personal storage vault.
                 </p>
               </div>
 
-              {/* Cyber-Luminous Warning Notification */}
-              <p className="text-[10px] text-amber-300 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 leading-normal text-left max-w-md mx-auto shadow-[inset_0_1px_10px_rgba(245,158,11,0.05)]">
-                💡 <b>No Password Required:</b> By connecting and signing with your private key, you derive the AES-GCM decryption key for all your private files natively in-browser.
-              </p>
-
               <button
+                type="button"
                 onClick={handleWalletAuth}
                 disabled={authLoading}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
               >
                 {authLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -334,6 +403,11 @@ export default function Home() {
                   </span>
                 )}
               </button>
+
+              {/* Sleek, minimalist text hint below the button */}
+              <p className="text-[10px] text-slate-500 leading-normal max-w-xs mx-auto">
+                🔒 <b>Zero-Knowledge:</b> No password required. Your private signature derives your storage encryption keys locally inside your browser context.
+              </p>
             </div>
           </div>
         </div>
