@@ -1,5 +1,5 @@
 {
-  "address": "0x43d4cABF1066f9FdBF794869d85899D65A8B02aF",
+  "address": "0xeacCB851bA7297D5420c8444B20a6Bc9685183E1",
   "abi": [
     {
       "anonymous": false,
@@ -259,6 +259,25 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_fileId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getFileViewers",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "getMyFiles",
       "outputs": [
@@ -404,6 +423,24 @@
           "internalType": "uint256",
           "name": "_fileId",
           "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_userToRevoke",
+          "type": "address"
+        }
+      ],
+      "name": "revokeAccess",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_cid",
+          "type": "string"
         },
         {
           "internalType": "address",

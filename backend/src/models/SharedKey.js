@@ -54,6 +54,38 @@ class SharedKeyAdapter {
     }
   }
 
+  async find(query = {}) {
+    const normalized = { ...query };
+    if (normalized.recipientAddress) {
+      normalized.recipientAddress = normalized.recipientAddress.toLowerCase();
+    }
+    if (normalized.fileId) {
+      normalized.fileId = String(normalized.fileId);
+    }
+
+    if (getDbMode()) {
+      return await MongoSharedKeyModel.find(normalized);
+    } else {
+      return await jsonDb.sharedKeys.find(normalized);
+    }
+  }
+
+  async deleteOne(query = {}) {
+    const normalized = { ...query };
+    if (normalized.recipientAddress) {
+      normalized.recipientAddress = normalized.recipientAddress.toLowerCase();
+    }
+    if (normalized.fileId) {
+      normalized.fileId = String(normalized.fileId);
+    }
+
+    if (getDbMode()) {
+      return await MongoSharedKeyModel.deleteOne(normalized);
+    } else {
+      return await jsonDb.sharedKeys.deleteOne(normalized);
+    }
+  }
+
   async create(keyData) {
     const data = {
       ...keyData,

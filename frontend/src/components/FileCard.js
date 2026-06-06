@@ -18,7 +18,8 @@ import {
   Loader2,
   ExternalLink,
   ChevronDown,
-  Copy
+  Copy,
+  Shield
 } from "lucide-react";
 
 export default function FileCard({ file, isSharedView = false, onActionSuccess, onShare, onPreview }) {
@@ -470,6 +471,17 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
               title="Share Key Access"
             >
               <Share2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+
+          {/* Manage Access / Revoke Control */}
+          {!isSharedView && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare && onShare(file); }}
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
+              title="Manage Access / Revoke"
+            >
+              <Shield className="h-3.5 w-3.5" />
             </button>
           )}
 

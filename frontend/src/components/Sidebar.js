@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { 
   Folder, 
   Share2, 
@@ -9,13 +9,27 @@ import {
   Activity, 
   LogOut, 
   Wallet,
-  HardDrive
+  HardDrive,
+  Copy,
+  Check
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatAddress } from "../utils/helpers.js";
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const { logout, user, authType } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAddress = async () => {
+    if (!user?.walletAddress) return;
+    try {
+      await navigator.clipboard.writeText(user.walletAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error("Failed to copy address:", e);
+    }
+  };
 
   const menuItems = [
     { id: "drive", label: "My Drive", icon: HardDrive },
@@ -80,11 +94,25 @@ export default function Sidebar({ activeTab, setActiveTab }) {
               <p className="text-xs text-slate-500 font-medium truncate uppercase tracking-wider">
                 {authType === "wallet" ? "Web3 Wallet" : "Authenticated Session"}
               </p>
-              <p className="text-sm font-semibold text-slate-300 truncate font-mono">
-                {authType === "wallet" 
-                  ? formatAddress(user?.walletAddress) 
-                  : user?.email}
-              </p>
+              {authType === "wallet" ? (
+                <button
+                  type="button"
+                  onClick={handleCopyAddress}
+                  className="flex items-center gap-1.5 hover:text-cyan-400 text-slate-300 text-sm font-semibold truncate font-mono transition-colors w-full cursor-pointer text-left focus:outline-none"
+                  title="Click to copy full address"
+                >
+                  <span className="truncate">{formatAddress(user?.walletAddress)}</span>
+                  {copied ? (
+                    <Check className="h-3 w-3 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-slate-500 hover:text-cyan-400 shrink-0" />
+                  )}
+                </button>
+              ) : (
+                <p className="text-sm font-semibold text-slate-300 truncate font-mono">
+                  {user?.email}
+                </p>
+              )}
             </div>
           </div>
           

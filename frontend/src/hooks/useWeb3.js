@@ -280,16 +280,32 @@ export const Web3Provider = ({ children }) => {
   };
 
   // 3. Revoke access from a wallet address
-  const revokeAccessOnChain = async (fileId, targetAddress) => {
+  const revokeAccessOnChain = async (fileIdentifier, targetAddress) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const tx = await contract.revokeAccess(fileId, targetAddress);
+      let tx;
+      if (typeof fileIdentifier === "string") {
+        tx = await contract["revokeAccess(string,address)"](fileIdentifier, targetAddress);
+      } else {
+        tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress);
+      }
       const receipt = await tx.wait();
       setTxPending(false);
       return receipt;
     } catch (e) {
       setTxPending(false);
+      throw e;
+    }
+  };
+
+  // Get list of authorized viewers from chain
+  const getFileViewersOnChain = async (fileId) => {
+    if (!contract) throw new Error("Smart contract not instantiated");
+    try {
+      return await contract.getFileViewers(fileId);
+    } catch (e) {
+      console.error("Error fetching file viewers from contract:", e);
       throw e;
     }
   };
@@ -411,6 +427,7 @@ export const Web3Provider = ({ children }) => {
         uploadFileOnChain,
         shareFileOnChain,
         revokeAccessOnChain,
+        getFileViewersOnChain,
         toggleVisibilityOnChain,
         deleteFileOnChain,
         getMyFilesFromChain,

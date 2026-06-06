@@ -33,6 +33,12 @@ contract Web3Drive {
     // Access control mapping: fileId => user => hasAccess
     mapping(uint256 => mapping(address => bool)) private fileAccess;
 
+    // Mapping from IPFS CID (hash) to file ID
+    mapping(string => uint256) private cidToFileId;
+    
+    // Mapping from file ID to array of addresses currently authorized
+    mapping(uint256 => address[]) private fileViewers;
+
     // Events
     event FileUploaded(
         uint256 indexed id,
@@ -122,6 +128,7 @@ contract Web3Drive {
         });
         
         userFiles[msg.sender].push(fileCount);
+        cidToFileId[_ipfsHash] = fileCount;
         
         emit FileUploaded(fileCount, _ipfsHash, _fileName, msg.sender, block.timestamp);
         
@@ -140,6 +147,7 @@ contract Web3Drive {
         
         fileAccess[_fileId][_userToShare] = true;
         sharedFiles[_userToShare].push(_fileId);
+        fileViewers[_fileId].push(_userToShare);
         
         emit FileShared(_fileId, msg.sender, _userToShare);
     }
@@ -165,7 +173,62 @@ contract Web3Drive {
             }
         }
         
+        // Remove from the fileViewers array using swap-and-pop method
+        address[] storage viewers = fileViewers[_fileId];
+        for (uint256 i = 0; i < viewers.length; i++) {
+            if (viewers[i] == _userToRevoke) {
+                viewers[i] = viewers[viewers.length - 1];
+                viewers.pop();
+                break;
+            }
+        }
+        
         emit AccessRevoked(_fileId, msg.sender, _userToRevoke);
+    }
+
+    /**
+     * @notice Revokes a user's access to a private file using its IPFS CID.
+     * @param _cid The IPFS hash (CID) of the file.
+     * @param _userToRevoke The wallet address to revoke.
+     */
+    function revokeAccess(string memory _cid, address _userToRevoke) external {
+        uint256 fileId = cidToFileId[_cid];
+        require(fileId != 0, "Web3Drive: File not found");
+        require(files[fileId].owner == msg.sender, "Web3Drive: Caller is not the file owner");
+        require(!files[fileId].isDeleted, "Web3Drive: File has been deleted");
+        require(fileAccess[fileId][_userToRevoke], "Web3Drive: Not shared with this user");
+        
+        fileAccess[fileId][_userToRevoke] = false;
+        
+        // Remove from the shared files array of the revoked user
+        uint256[] storage sFiles = sharedFiles[_userToRevoke];
+        for (uint256 i = 0; i < sFiles.length; i++) {
+            if (sFiles[i] == fileId) {
+                sFiles[i] = sFiles[sFiles.length - 1];
+                sFiles.pop();
+                break;
+            }
+        }
+        
+        // Remove from the fileViewers array using swap-and-pop method
+        address[] storage viewers = fileViewers[fileId];
+        for (uint256 i = 0; i < viewers.length; i++) {
+            if (viewers[i] == _userToRevoke) {
+                viewers[i] = viewers[viewers.length - 1];
+                viewers.pop();
+                break;
+            }
+        }
+        
+        emit AccessRevoked(fileId, msg.sender, _userToRevoke);
+    }
+
+    /**
+     * @notice Returns the list of addresses that have access to a file.
+     * @param _fileId The ID of the file.
+     */
+    function getFileViewers(uint256 _fileId) external view onlyOwner(_fileId) returns (address[] memory) {
+        return fileViewers[_fileId];
     }
 
     /**
