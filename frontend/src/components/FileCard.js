@@ -17,7 +17,8 @@ import {
   ShieldAlert,
   Loader2,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Copy
 } from "lucide-react";
 
 export default function FileCard({ file, isSharedView = false, onActionSuccess, onShare, onPreview }) {
@@ -338,7 +339,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
   };
 
   return (
-    <div className="relative group flex flex-col justify-between h-72 rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:border-cyan-500/40 select-none">
+    <div className="relative group flex flex-col justify-between h-72 rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:border-cyan-500/35 select-none">
       {/* Floating Badges */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5">
         <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
@@ -358,13 +359,23 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       
       <div className="absolute top-4 right-4 z-20">
         {isPublic ? (
-          <span className="h-6 w-6 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shadow-[0_0_10px_rgba(99,102,241,0.1)] transition-colors hover:bg-indigo-500/20" title="Publicly accessible">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleToggleVisibility(); }}
+            disabled={isProcessing}
+            className="h-6 w-6 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shadow-[0_0_10px_rgba(99,102,241,0.1)] transition-colors hover:bg-indigo-500/20 cursor-pointer" 
+            title="Public (click to make Private)"
+          >
             <Globe className="h-3 w-3" />
-          </span>
+          </button>
         ) : (
-          <span className="h-6 w-6 rounded-full bg-slate-950/80 border border-slate-800 text-slate-500 flex items-center justify-center" title="Private Vault">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleToggleVisibility(); }}
+            disabled={isProcessing}
+            className="h-6 w-6 rounded-full bg-slate-950/80 border border-slate-800 text-slate-500 flex items-center justify-center hover:text-cyan-400 hover:border-cyan-500/30 transition-colors cursor-pointer" 
+            title="Private (click to make Public)"
+          >
             <Lock className="h-3 w-3" />
-          </span>
+          </button>
         )}
       </div>
 
@@ -392,87 +403,88 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             {formatDate(timestamp)}
           </span>
         </div>
-
-        {/* IPFS Hash Badge */}
-        <span className="bg-slate-950/60 border border-slate-900/80 hover:border-slate-800 rounded-lg px-2.5 py-1 text-slate-500 text-[10px] font-mono text-center select-all cursor-pointer mt-3 block w-fit max-w-[170px] truncate hover:text-slate-300 transition-colors" title={ipfsHash}>
-          {ipfsHash.slice(0, 8)}...{ipfsHash.slice(-6)}
-        </span>
       </div>
 
-      {/* Footer Controls & Download */}
-      <div className="mt-4 flex flex-col gap-3">
-        {/* Quick actions bar */}
-        <div className="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
-          {/* Preview button */}
+      {/* Upgraded Footer Actions Section */}
+      <div className="relative mt-4 h-12 flex items-center justify-between overflow-hidden">
+        {/* Default View (Truncated IPFS CID & Sepolia Network Badge) */}
+        <div className="absolute inset-0 flex items-center justify-between transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-4 pointer-events-auto group-hover:pointer-events-none">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(ipfsHash);
+              alert("IPFS CID copied to clipboard!");
+            }}
+            className="flex items-center gap-1.5 bg-slate-950/60 border border-slate-900 hover:border-cyan-500/30 text-slate-400 hover:text-cyan-400 rounded-lg px-2.5 py-1 text-[10px] font-mono transition-all duration-300"
+            title="Click to copy IPFS CID"
+          >
+            <span>{ipfsHash.slice(0, 6)}...{ipfsHash.slice(-4)}</span>
+            <Copy className="h-3 w-3 text-slate-500" />
+          </button>
+          
+          <span className="text-[9px] font-bold font-mono tracking-widest uppercase text-slate-500 bg-slate-950/40 px-2 py-1 rounded-md border border-white/5 flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(6,182,212,0.8)] animate-pulse" />
+            Ethereum
+          </span>
+        </div>
+
+        {/* Hover View Actions (Revealed ONLY on card hover) */}
+        <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 translate-y-4 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+          {/* Decrypt & Preview Button */}
           {["Image", "Document", "Code"].includes(category) && (
             <button
-              onClick={handlePreview}
+              onClick={(e) => { e.stopPropagation(); handlePreview(); }}
               disabled={isProcessing}
-              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all cursor-pointer"
+              className="h-9 px-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 flex items-center justify-center gap-1 text-xs font-semibold transition-all duration-300 cursor-pointer"
               title="Decrypt & Preview"
             >
-              <Eye className="h-4 w-4" />
+              {isProcessing && downloadProgress.includes("preview") ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+              <span>Preview</span>
             </button>
           )}
+
+          {/* Decrypt & Download Button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+            disabled={isProcessing}
+            className="h-9 px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center justify-center gap-1 text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95 border-none"
+            title="Decrypt & Download"
+          >
+            {isProcessing && downloadProgress.includes("Fetching") ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
+            ) : (
+              <Download className="h-3.5 w-3.5 text-white" />
+            )}
+            <span>Download</span>
+          </button>
 
           {/* Share Control */}
           {!isSharedView && (
             <button
-              onClick={() => onShare && onShare(file)}
-              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-violet-500/50 hover:bg-violet-500/10 text-slate-400 hover:text-violet-400 flex items-center justify-center transition-all cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onShare && onShare(file); }}
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-violet-500/50 hover:bg-violet-500/10 text-slate-300 hover:text-violet-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
               title="Share Key Access"
             >
-              <Share2 className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Visibility Toggle */}
-          {!isSharedView && (
-            <button
-              onClick={handleToggleVisibility}
-              disabled={isProcessing}
-              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-amber-500/50 hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 flex items-center justify-center transition-all cursor-pointer"
-              title={isPublic ? "Make Private" : "Make Public"}
-            >
-              {isPublic ? (
-                <Lock className="h-4 w-4" />
-              ) : (
-                <Globe className="h-4 w-4" />
-              )}
+              <Share2 className="h-3.5 w-3.5" />
             </button>
           )}
 
           {/* Delete Control */}
           {!isSharedView && (
             <button
-              onClick={handleDelete}
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               disabled={isProcessing}
-              className="h-8 w-8 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer"
-              title="Delete record"
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
+              title="Delete File"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-
-        {/* Gradient Decrypt & Download button */}
-        <button
-          onClick={handleDownload}
-          disabled={isProcessing}
-          className="w-full h-10 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-1.5 shadow-md shadow-cyan-500/10 hover:shadow-cyan-500/20 cursor-pointer border-none transition-all active:scale-[0.98] duration-300"
-        >
-          {isProcessing && downloadProgress ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-              <span className="truncate max-w-[150px]">{downloadProgress}</span>
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4 text-white" />
-              <span>Decrypt & Download</span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );

@@ -628,39 +628,78 @@ export default function Home() {
               {/* Upload Drop Zone Card */}
               <FileUpload onUploadSuccess={refreshDashboard} />
 
-              {/* Controls bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-900 pt-6">
-                {/* Search Bar */}
-                <div className="relative max-w-md w-full">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search documents by name or IPFS CID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-cyan-400"
-                  />
+              {/* Upgraded Dashboard Metrics Panel */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {/* Metric 1: Total Files */}
+                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <FileText className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Total Files</span>
+                    <span className="text-xl font-extrabold text-slate-200">{files.length}</span>
+                  </div>
                 </div>
 
-                {/* Filters */}
-                <div className="flex items-center gap-3">
-                  <div className="flex bg-slate-900 p-0.5 border border-slate-800 rounded-lg text-xs">
-                    {["all", "images", "videos", "documents"].map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setFilterType(type)}
-                        className={`px-3 py-1.5 rounded-md font-semibold capitalize transition-all ${
-                          filterType === type
-                            ? "bg-slate-950 text-cyan-400 border border-slate-850 shadow"
-                            : "text-slate-500 hover:text-slate-300"
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                {/* Metric 2: Storage Capacity */}
+                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <HardDrive className="h-5 w-5" />
                   </div>
+                  <div>
+                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Storage Used</span>
+                    <span className="text-xl font-extrabold text-slate-200">
+                      {formatBytes(files.reduce((acc, f) => acc + Number(f.fileSize || 0), 0))}
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg">
+                {/* Metric 3: Active Shares */}
+                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <Share2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Active Shares</span>
+                    <span className="text-xl font-extrabold text-slate-200">
+                      {files.filter(f => f.isPublic).length + sharedFiles.length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls bar */}
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-t border-slate-900 pt-6">
+                {/* Search Bar & Dropdown Container */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Search by filename, CID, or tag"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-slate-900/40 border border-slate-800 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-cyan-400 text-slate-200 transition-all duration-300"
+                    />
+                  </div>
+                  
+                  <div className="relative shrink-0">
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className="bg-slate-900/50 border border-slate-800 text-slate-300 px-4 py-2 rounded-xl text-sm font-semibold focus:outline-none focus:border-cyan-400 cursor-pointer h-10 w-44"
+                    >
+                      <option value="all">All File Types</option>
+                      <option value="images">Images Only</option>
+                      <option value="videos">Videos Only</option>
+                      <option value="documents">Documents</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Right View Modes */}
+                <div className="flex items-center gap-3 shrink-0 w-full md:w-auto justify-end">
+                  <div className="flex bg-slate-900 border border-slate-850 p-0.5 rounded-lg">
                     <button 
                       onClick={() => setViewMode("grid")}
                       className={`p-1.5 rounded-md transition-all ${viewMode === "grid" ? "bg-slate-950 text-cyan-400 border border-slate-800" : "text-slate-500 hover:text-slate-300"}`}
@@ -673,6 +712,28 @@ export default function Home() {
                     >
                       <List className="h-4 w-4" />
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Encryption Transparency Info Panel */}
+              <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-cyan-950/5 border border-cyan-500/10 backdrop-blur-md">
+                <div className="flex items-center gap-2 text-xs text-cyan-300 font-mono">
+                  <Lock className="h-4 w-4 text-cyan-400/80" />
+                  <span className="font-semibold">AES-256 + RSA Hybrid:</span>
+                  <span className="text-slate-400">Files are fully encrypted client-side.</span>
+                </div>
+                <div className="hidden sm:block text-slate-700">|</div>
+                <div className="flex items-center gap-2 text-xs text-cyan-300 font-mono">
+                  <Globe className="h-4 w-4 text-cyan-400/80" />
+                  <span className="font-semibold">Secured on IPFS:</span>
+                  <span className="text-slate-400">Decentralized DHT distribution nodes.</span>
+                </div>
+                <div className="ml-auto group relative cursor-help">
+                  <HelpCircle className="h-4.5 w-4.5 text-slate-500 hover:text-cyan-400 transition-colors" />
+                  <div className="absolute right-0 bottom-6 w-64 p-3 bg-slate-950/95 border border-cyan-500/20 text-[10px] text-slate-450 rounded-xl shadow-2xl backdrop-blur-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 z-50 leading-relaxed font-mono">
+                    <span className="text-cyan-400 font-bold block mb-1">🔒 Zero-Knowledge Decryption</span>
+                    Only your connected wallet address holds the unique private key required to decrypt the symmetric file key. No database or administrator can access your data.
                   </div>
                 </div>
               </div>
