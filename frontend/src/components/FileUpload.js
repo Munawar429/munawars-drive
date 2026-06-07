@@ -36,8 +36,17 @@ export default function FileUpload({ onUploadSuccess }) {
 
   const fileInputRef = useRef(null);
 
-  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract, provider, waitTx } = useWeb3();
+  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract, provider, waitTx, networkName, chainId } = useWeb3();
   const { masterSeed, logActivity, user } = useAuth();
+
+  const getTxExplorerUrl = (hash) => {
+    if (!hash) return null;
+    const networkLower = networkName?.toLowerCase() || "";
+    if (chainId === "11155111" || networkLower === "sepolia") {
+      return `https://sepolia.etherscan.io/tx/${hash}`;
+    }
+    return null;
+  };
 
   // Handle Drag Over
   const handleDrag = (e) => {
@@ -113,6 +122,7 @@ export default function FileUpload({ onUploadSuccess }) {
     }
 
     setErrorMessage("");
+    setTxHash(""); // Reset any previous transaction hash
     setIsUploading(true);
     setUploadProgress(10);
     setUploadStep("encrypting");
@@ -199,12 +209,14 @@ export default function FileUpload({ onUploadSuccess }) {
         isPublic
       );
 
+      // Set transaction hash immediately to update loader UI
+      const dispatchedHash = tx.hash || tx.transactionHash;
+      setTxHash(dispatchedHash);
       setUploadProgress(90);
-      console.log("⏳ Waiting for transaction confirmation...");
+      console.log(`⏳ Waiting for transaction confirmation: ${dispatchedHash}...`);
       const receipt = await waitTx(tx, provider); // Explicit wait with custom polling fallback
 
       console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash || receipt.transactionHash);
-      setTxHash(receipt.hash || receipt.transactionHash);
       setUploadPhase("success");
       setFile(null); // Clear selected file immediately on success
 
@@ -328,6 +340,29 @@ export default function FileUpload({ onUploadSuccess }) {
             {uploadStep === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
             {uploadStep === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
           </p>
+
+          {txHash && (
+            <div className="mt-5 p-3.5 bg-slate-900/50 border border-slate-800/80 rounded-xl text-center w-full max-w-sm">
+              <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-bold">Transaction Dispatched</span>
+              {getTxExplorerUrl(txHash) ? (
+                <a 
+                  href={getTxExplorerUrl(txHash)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono text-cyan-400 hover:text-cyan-300 underline break-all inline-block hover:scale-102 transition-transform duration-200"
+                >
+                  {txHash}
+                </a>
+              ) : (
+                <span className="text-xs font-mono text-cyan-400 break-all select-all block">
+                  {txHash}
+                </span>
+              )}
+              <span className="text-[10px] text-slate-400 block mt-2 animate-pulse">
+                ⏳ Confirming on {networkName || "blockchain"}...
+              </span>
+            </div>
+          )}
         </div>
       )}
 

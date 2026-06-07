@@ -11,7 +11,7 @@ const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || Web3DriveCon
  * Helper to wait for transaction confirmation with a manual polling fallback.
  * Prevents Ethers v6 standard wait() from hanging indefinitely in browser provider environments.
  */
-const waitTx = async (tx, provider, timeoutMs = 90000) => {
+const waitTx = async (tx, provider, timeoutMs = 180000) => {
   if (!tx || !tx.hash) {
     throw new Error("Invalid transaction object");
   }
@@ -50,30 +50,62 @@ const waitTx = async (tx, provider, timeoutMs = 90000) => {
       }
     }
 
-    // 2. Manual polling loop
-    if (!provider) {
+    // 2. Set up fallback provider for Sepolia network if needed
+    let fallbackProvider = null;
+    try {
+      const network = await provider?.getNetwork();
+      if (network && Number(network.chainId) === 11155111) {
+        fallbackProvider = new ethers.JsonRpcProvider("https://rpc.ankr.com/eth_sepolia");
+        console.log("🌐 [waitTx] Initialized fallback public Sepolia provider for transaction tracking.");
+      }
+    } catch (e) {
+      console.warn("⚠️ [waitTx] Could not initialize fallback provider:", e);
+    }
+
+    // 3. Manual polling loop
+    if (!provider && !fallbackProvider) {
       console.warn("⚠️ [waitTx] Provider not available, waiting on standard wait()...");
       return await tx.wait();
     }
 
     const start = Date.now();
     while (Date.now() - start < timeoutMs - 3000) {
-      try {
-        const receipt = await provider.getTransactionReceipt(tx.hash);
-        if (receipt) {
-          console.log(`✅ [waitTx] Confirmed via manual polling after ${Date.now() - start}ms`);
-          if (receipt.status === 0 || Number(receipt.status) === 0) {
-            throw new Error("Transaction reverted on-chain");
+      // Poll primary provider (MetaMask)
+      if (provider) {
+        try {
+          const receipt = await provider.getTransactionReceipt(tx.hash);
+          if (receipt) {
+            console.log(`✅ [waitTx] Confirmed via primary provider polling after ${Date.now() - start}ms`);
+            if (receipt.status === 0 || Number(receipt.status) === 0) {
+              throw new Error("Transaction reverted on-chain");
+            }
+            return receipt;
           }
-          return receipt;
-        }
-      } catch (pollErr) {
-        console.warn("⚠️ [waitTx] Manual polling receipt fetch error:", pollErr);
-        if (pollErr.message && pollErr.message.includes("revert")) {
-          throw pollErr;
+        } catch (pollErr) {
+          console.warn("⚠️ [waitTx] Primary provider polling receipt fetch error:", pollErr);
+          if (pollErr.message && pollErr.message.includes("revert")) {
+            throw pollErr;
+          }
         }
       }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Poll fallback provider (Ankr Sepolia RPC)
+      if (fallbackProvider) {
+        try {
+          const receipt = await fallbackProvider.getTransactionReceipt(tx.hash);
+          if (receipt) {
+            console.log(`✅ [waitTx] Confirmed via fallback provider polling after ${Date.now() - start}ms`);
+            if (receipt.status === 0 || Number(receipt.status) === 0) {
+              throw new Error("Transaction reverted on-chain");
+            }
+            return receipt;
+          }
+        } catch (fallbackErr) {
+          console.warn("⚠️ [waitTx] Fallback provider polling receipt fetch error:", fallbackErr);
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
     throw new Error("Transaction confirmation timed out.");
   })();
