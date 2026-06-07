@@ -30,9 +30,13 @@ export default function FileUpload({ onUploadSuccess }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [txHash, setTxHash] = useState("");
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState("");
+
   const fileInputRef = useRef(null);
 
-  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet } = useWeb3();
+  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract } = useWeb3();
   const { masterSeed, logActivity, user } = useAuth();
 
   // Handle Drag Over
@@ -109,6 +113,9 @@ export default function FileUpload({ onUploadSuccess }) {
     }
 
     setErrorMessage("");
+    setIsUploading(true);
+    setUploadProgress(10);
+    setUploadStep("encrypting");
     
     try {
       // --------------------------------------------------
@@ -156,6 +163,8 @@ export default function FileUpload({ onUploadSuccess }) {
       // Phase 2: Upload Encrypted Blob to IPFS (via Backend API proxy)
       // --------------------------------------------------
       setUploadPhase("uploading_ipfs");
+      setUploadStep("uploading_ipfs");
+      setUploadProgress(40);
       console.log("🌐 Uploading to IPFS gateway proxy...");
       
       const formData = new FormData();
@@ -174,10 +183,14 @@ export default function FileUpload({ onUploadSuccess }) {
       // Phase 3: Record metadata to Blockchain via Smart Contract
       // --------------------------------------------------
       setUploadPhase("blockchain_tx");
+      setUploadStep("blockchain_tx");
+      setUploadProgress(70);
       console.log("⛓️ Broadcasting transaction to blockchain...");
 
       try {
-        const receipt = await uploadFileOnChain(
+        if (!contract) throw new Error("Smart contract not instantiated");
+
+        const tx = await contract.uploadFile(
           cid,
           file.name,
           file.type || "application/octet-stream",
@@ -186,6 +199,10 @@ export default function FileUpload({ onUploadSuccess }) {
           fileIntegrityHash,
           isPublic
         );
+
+        setUploadProgress(90);
+        console.log("⏳ Waiting for transaction confirmation...");
+        const receipt = await tx.wait(); // Explicit wait for mining
 
         console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
         setTxHash(receipt.hash);
@@ -220,12 +237,20 @@ export default function FileUpload({ onUploadSuccess }) {
           "UPLOAD_FAILED",
           `Failed to record file ${file?.name} on-chain: ${txErr.message || 'Unknown error'}`
         );
+      } finally {
+        // Forcefully reset loading indicators and status markers
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadStep("");
       }
 
     } catch (err) {
       console.error("Upload failure:", err);
       setErrorMessage(err.message || "An unexpected error occurred during upload.");
       setUploadPhase("error");
+      setIsUploading(false);
+      setUploadProgress(0);
+      setUploadStep("");
       
       await logActivity(
         "UPLOAD_FAILED",
@@ -293,33 +318,29 @@ export default function FileUpload({ onUploadSuccess }) {
       )}
 
       {/* Progressive Phase Loader */}
-      {uploadPhase !== "idle" && uploadPhase !== "success" && uploadPhase !== "error" && (
+      {isUploading && (
         <div className="border border-slate-800/80 rounded-2xl p-8 bg-slate-950/45 backdrop-blur-md flex flex-col items-center">
           <Loader2 className="h-10 w-10 text-cyan-400 animate-spin mb-4" />
           
           <div className="progress-container">
             <div className="status-text">
-              {uploadPhase === "encrypting" && "🔒 Locking Vault (AES-GCM Shielding...)"}
-              {uploadPhase === "uploading_ipfs" && "🌐 Dispatching to IPFS (Decentralized Pinning...)"}
-              {uploadPhase === "blockchain_tx" && "⛓️ Syncing Ledger (Blockchain Registration...)"}
+              {uploadStep === "encrypting" && "🔒 Locking Vault (AES-GCM Shielding...)"}
+              {uploadStep === "uploading_ipfs" && "🌐 Dispatching to IPFS (Decentralized Pinning...)"}
+              {uploadStep === "blockchain_tx" && "⛓️ Syncing Ledger (Blockchain Registration...)"}
             </div>
             
             <div className="progress-bar-background mt-2">
               <div 
                 className="progress-bar-fill" 
-                style={{
-                  width: 
-                    uploadPhase === "encrypting" ? "33%" : 
-                    uploadPhase === "uploading_ipfs" ? "66%" : "95%"
-                }}
+                style={{ width: `${uploadProgress}%` }}
               />
             </div>
           </div>
 
           <p className="text-xs text-slate-400 text-center mt-4 max-w-sm leading-normal">
-            {uploadPhase === "encrypting" && "Generating random 256-bit AES key to cryptographically seal the file in memory."}
-            {uploadPhase === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
-            {uploadPhase === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
+            {uploadStep === "encrypting" && "Generating random 256-bit AES key to cryptographically seal the file in memory."}
+            {uploadStep === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
+            {uploadStep === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
           </p>
         </div>
       )}
