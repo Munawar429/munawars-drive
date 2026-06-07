@@ -271,11 +271,11 @@ export const Web3Provider = ({ children }) => {
     try {
       const tx = await contract.shareFile(fileId, targetAddress);
       const receipt = await tx.wait();
-      setTxPending(false);
       return receipt;
     } catch (e) {
-      setTxPending(false);
       throw e;
+    } finally {
+      setTxPending(false);
     }
   };
 
@@ -291,11 +291,11 @@ export const Web3Provider = ({ children }) => {
         tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress);
       }
       const receipt = await tx.wait();
-      setTxPending(false);
       return receipt;
     } catch (e) {
-      setTxPending(false);
       throw e;
+    } finally {
+      setTxPending(false);
     }
   };
 
@@ -317,11 +317,11 @@ export const Web3Provider = ({ children }) => {
     try {
       const tx = await contract.toggleVisibility(fileId, isPublic);
       const receipt = await tx.wait();
-      setTxPending(false);
       return receipt;
     } catch (e) {
-      setTxPending(false);
       throw e;
+    } finally {
+      setTxPending(false);
     }
   };
 
@@ -332,11 +332,11 @@ export const Web3Provider = ({ children }) => {
     try {
       const tx = await contract.deleteFile(fileId);
       const receipt = await tx.wait();
-      setTxPending(false);
       return receipt;
     } catch (e) {
-      setTxPending(false);
       throw e;
+    } finally {
+      setTxPending(false);
     }
   };
 

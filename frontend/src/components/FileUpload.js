@@ -187,75 +187,60 @@ export default function FileUpload({ onUploadSuccess }) {
       setUploadProgress(70);
       console.log("⛓️ Broadcasting transaction to blockchain...");
 
-      try {
-        if (!contract) throw new Error("Smart contract not instantiated");
+      if (!contract) throw new Error("Smart contract not instantiated");
 
-        const tx = await contract.uploadFile(
-          cid,
-          file.name,
-          file.type || "application/octet-stream",
-          file.size,
-          encryptedKey || "unencrypted",
-          fileIntegrityHash,
-          isPublic
-        );
+      const tx = await contract.uploadFile(
+        cid,
+        file.name,
+        file.type || "application/octet-stream",
+        file.size,
+        encryptedKey || "unencrypted",
+        fileIntegrityHash,
+        isPublic
+      );
 
-        setUploadProgress(90);
-        console.log("⏳ Waiting for transaction confirmation...");
-        const receipt = await tx.wait(); // Explicit wait for mining
+      setUploadProgress(90);
+      console.log("⏳ Waiting for transaction confirmation...");
+      const receipt = await tx.wait(); // Explicit wait for mining
 
-        console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
-        setTxHash(receipt.hash);
-        setUploadPhase("success");
-        setFile(null); // Clear selected file immediately on success
+      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
+      setTxHash(receipt.hash);
+      setUploadPhase("success");
+      setFile(null); // Clear selected file immediately on success
 
-        // Log activity in backend audit ledger
-        await logActivity(
-          "FILE_UPLOAD",
-          `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
-          file.name,
-          file.size,
-          receipt.hash
-        );
+      // Log activity in backend audit ledger
+      await logActivity(
+        "FILE_UPLOAD",
+        `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
+        file.name,
+        file.size,
+        receipt.hash
+      );
 
-        // Trigger callback
-        if (onUploadSuccess) {
-          onUploadSuccess();
-        }
-
-        // Auto-reset upload phase back to idle after 5 seconds
-        setTimeout(() => {
-          setUploadPhase("idle");
-        }, 5000);
-
-      } catch (txErr) {
-        console.error("On-chain transaction failed:", txErr);
-        setErrorMessage(txErr.message || "MetaMask transaction failed or was rejected.");
-        setUploadPhase("error");
-        
-        await logActivity(
-          "UPLOAD_FAILED",
-          `Failed to record file ${file?.name} on-chain: ${txErr.message || 'Unknown error'}`
-        );
-      } finally {
-        // Forcefully reset loading indicators and status markers
-        setIsUploading(false);
-        setUploadProgress(0);
-        setUploadStep("");
+      // Trigger callback
+      if (onUploadSuccess) {
+        onUploadSuccess();
       }
+
+      // Auto-reset upload phase back to idle after 5 seconds
+      setTimeout(() => {
+        setUploadPhase("idle");
+      }, 5000);
 
     } catch (err) {
       console.error("Upload failure:", err);
       setErrorMessage(err.message || "An unexpected error occurred during upload.");
       setUploadPhase("error");
-      setIsUploading(false);
-      setUploadProgress(0);
-      setUploadStep("");
       
       await logActivity(
         "UPLOAD_FAILED",
         `Failed to upload file ${file?.name}: ${err.message || 'Unknown error'}`
       );
+    } finally {
+      // Forcefully reset loading indicators and status markers
+      setIsUploading(false);
+      setUploadProgress(0);
+      setUploadStep("");
     }
   };
 
