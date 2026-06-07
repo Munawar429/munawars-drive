@@ -19,7 +19,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [resolvedAddress, setResolvedAddress] = useState("");
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
-  const { shareFileOnChain, revokeAccessOnChain, estimateGasFees } = useWeb3();
+  const { contract, provider, estimateGasFees } = useWeb3();
   const { logActivity, masterSeed, user } = useAuth();
 
   const [viewers, setViewers] = useState([]);
@@ -133,8 +133,6 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       return;
     }
 
-    setIsProcessing(true);
-
     try {
       // 1. Fetch recipient public encryption key from backend registry
       console.log(`📡 [KeyExchange] Fetching public key for recipient: ${normalizedTarget}...`);
@@ -168,7 +166,17 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       console.log("🔒 [KeyExchange] Encrypting file key with recipient's public RSA key...");
       const recipientEncryptedKey = await encryptFileKeyWithRSA(rawFileKey, recipientPubKey);
 
-      // 4. Register the encrypted key mapping in the backend database
+      // 4. Prompt user to sign the share transaction in their wallet (before showing Broadcasting)
+      console.log(`⛓️ [KeyExchange] Requesting wallet signature for share permission: File ${file.fileName} -> Wallet ${normalizedTarget}...`);
+      if (!contract) throw new Error("Smart contract not instantiated. Connect your wallet first.");
+      
+      const tx = await contract.shareFile(Number(file.id), normalizedTarget);
+      console.log("✅ Transaction approved and dispatched. Tx hash:", tx.hash);
+
+      // 5. Transaction is sent, now show "Broadcasting..." / loading state
+      setIsProcessing(true);
+
+      // 6. Register the encrypted key mapping in the backend database
       console.log("📡 [KeyExchange] Registering encrypted key mapping in database...");
       await axios.post(`${API_URL}/ipfs/share-key`, {
         fileId: Number(file.id),
@@ -176,10 +184,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         encryptedKey: recipientEncryptedKey
       });
 
-      // 5. Fire blockchain transaction to record the permission in the on-chain ACL
-      console.log(`⛓️ [KeyExchange] Registering share permission on-chain: File ${file.fileName} -> Wallet ${normalizedTarget}...`);
-      const receipt = await shareFileOnChain(Number(file.id), normalizedTarget);
-      
+      // 7. Await blockchain transaction to confirm (using standard await tx.wait())
+      console.log("⏳ [KeyExchange] Waiting for transaction confirmation on-chain...");
+      const receipt = await tx.wait();
       console.log("🎉 Share transaction confirmed:", receipt.hash);
       
       // Dynamically add the new share to local state for immediate render
@@ -224,9 +231,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     } catch (err) {
       console.error("Failed to share file:", err);
       setErrorMessage(err.message || "On-chain transaction failed. Ensure the address is correct and is not yourself.");
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
   };
 
   const handleRevoke = async (recipientAddress) => {
@@ -234,20 +241,29 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
     setErrorMessage("");
     setSuccessMessage("");
-    setIsProcessing(true);
 
     try {
       console.log(`⛓️ [Revoke] Initializing on-chain access revocation for CID ${file.ipfsHash} and recipient ${recipientAddress}...`);
-      
-      // 1. Fire smart contract revoke transaction (CID-based)
-      const receipt = await revokeAccessOnChain(file.ipfsHash, recipientAddress);
-      console.log("🎉 On-chain revocation confirmed:", receipt.hash);
+      if (!contract) throw new Error("Smart contract not instantiated. Connect your wallet first.");
 
-      // 2. Fire backend request to delete the shared key record
+      // 1. Prompt user to sign the revoke transaction in their wallet (before showing Broadcasting)
+      console.log("🖋️ Requesting wallet signature for access revocation...");
+      const tx = await contract["revokeAccess(string,address)"](file.ipfsHash, recipientAddress);
+      console.log("✅ Revoke transaction approved and dispatched. Tx hash:", tx.hash);
+
+      // 2. Transaction is sent, now show "Broadcasting..." / loading state
+      setIsProcessing(true);
+
+      // 3. Fire backend request to delete the shared key record
       console.log(`📡 [Revoke] Deleting shared key record from database...`);
       await axios.delete(`${API_URL}/ipfs/share-key/${Number(file.id)}/${recipientAddress}`);
 
-      // 3. Log activity (non-blocking)
+      // 4. Await transaction confirmation on-chain (using standard await tx.wait())
+      console.log("⏳ Waiting for transaction confirmation on-chain...");
+      const receipt = await tx.wait();
+      console.log("🎉 On-chain revocation confirmed:", receipt.hash);
+
+      // 5. Log activity (non-blocking)
       logActivity(
         "REVOKE_ACCESS",
         `Revoked access to file ${file.fileName} from wallet: ${recipientAddress}`,
@@ -272,9 +288,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     } catch (err) {
       console.error("Failed to revoke access:", err);
       setErrorMessage(err.message || "Failed to revoke access on-chain.");
+    } finally {
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   };
 
   return (
