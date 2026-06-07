@@ -7,151 +7,6 @@ import Web3DriveConfig from "../utils/Web3Drive.json";
 const Web3Context = createContext(null);
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || Web3DriveConfig.address;
 
-/**
- * Helper to wait for transaction confirmation with a manual polling fallback.
- * Prevents Ethers v6 standard wait() from hanging indefinitely in browser provider environments.
- */
-const waitTx = async (tx, provider, timeoutMs = 180000) => {
-  if (!tx || !tx.hash) {
-    throw new Error("Invalid transaction object");
-  }
-
-  console.log(`⏳ [waitTx] Monitoring transaction ${tx.hash} (Timeout: ${timeoutMs}ms)...`);
-
-  let timeoutId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error("Transaction confirmation timed out. Please check your wallet or block explorer."));
-    }, timeoutMs);
-  });
-
-  // 1. Set up fallback provider for Sepolia network if needed
-  let fallbackProvider = null;
-  try {
-    const network = await provider?.getNetwork();
-    if (network && Number(network.chainId) === 11155111) {
-      try {
-        fallbackProvider = new ethers.JsonRpcProvider("https://rpc.ankr.com/eth_sepolia");
-        await fallbackProvider.getBlockNumber(); // verify connection
-        console.log("🌐 [waitTx] Initialized fallback public Sepolia provider (Ankr).");
-      } catch (err) {
-        console.warn("⚠️ [waitTx] Failed to connect to Ankr Sepolia RPC, using publicnode fallback...");
-        fallbackProvider = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-      }
-    }
-  } catch (e) {
-    console.warn("⚠️ [waitTx] Could not initialize fallback provider:", e);
-  }
-
-  // 2. Standard wait promise (handles replacement events: speed up / cancel)
-  const standardWaitPromise = (async () => {
-    try {
-      const receipt = await tx.wait();
-      if (receipt) {
-        console.log(`✅ [waitTx] Confirmed via standard wait():`, receipt.hash || receipt.transactionHash);
-        if (receipt.status === 0 || Number(receipt.status) === 0) {
-          throw new Error("Transaction reverted on-chain");
-        }
-        return receipt;
-      }
-    } catch (err) {
-      if (err.code === "TRANSACTION_REPLACED" || err.message?.includes("REPLACED")) {
-        console.log("🔄 [waitTx] Standard wait detected transaction replacement/speed-up.");
-        if (err.receipt) {
-          if (err.receipt.status === 0 || Number(err.receipt.status) === 0) {
-            throw new Error("Replacement transaction reverted on-chain");
-          }
-          return err.receipt;
-        }
-      }
-      console.warn("⚠️ [waitTx] Standard tx.wait() rejected:", err);
-      throw err;
-    }
-    throw new Error("Standard wait returned empty");
-  })();
-
-  // 3. Direct RPC polling promise (handles lagging wallet provider event listeners)
-  const pollingPromise = (async () => {
-    if (!provider && !fallbackProvider) {
-      await new Promise((resolve) => setTimeout(resolve, timeoutMs));
-      throw new Error("No provider available for polling");
-    }
-
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs - 3000) {
-      // Poll primary provider (MetaMask)
-      if (provider) {
-        try {
-          const receipt = await provider.getTransactionReceipt(tx.hash);
-          if (receipt) {
-            console.log(`✅ [waitTx] Confirmed via primary provider polling after ${Date.now() - start}ms`);
-            if (receipt.status === 0 || Number(receipt.status) === 0) {
-              throw new Error("Transaction reverted on-chain");
-            }
-            return receipt;
-          }
-        } catch (pollErr) {
-          console.warn("⚠️ [waitTx] Primary provider polling receipt fetch error:", pollErr);
-        }
-      }
-
-      // Poll fallback provider (Ankr / Publicnode)
-      if (fallbackProvider) {
-        try {
-          const receipt = await fallbackProvider.getTransactionReceipt(tx.hash);
-          if (receipt) {
-            console.log(`✅ [waitTx] Confirmed via fallback provider polling after ${Date.now() - start}ms`);
-            if (receipt.status === 0 || Number(receipt.status) === 0) {
-              throw new Error("Transaction reverted on-chain");
-            }
-            return receipt;
-          }
-        } catch (fallbackErr) {
-          console.warn("⚠️ [waitTx] Fallback provider polling receipt fetch error:", fallbackErr);
-        }
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-    throw new Error("Polling timeout");
-  })();
-
-  // 4. Custom race: resolve to first successful receipt, reject only if both fail
-  const waitPromise = new Promise((resolve, reject) => {
-    let resolved = false;
-    let errors = [];
-
-    const handleSuccess = (receipt) => {
-      if (resolved) return;
-      resolved = true;
-      resolve(receipt);
-    };
-
-    const handleFailure = (err) => {
-      errors.push(err);
-      if (errors.length >= 2) {
-        if (!resolved) {
-          resolved = true;
-          reject(errors[0] || new Error("All transaction confirmations failed."));
-        }
-      }
-    };
-
-    standardWaitPromise.then(handleSuccess).catch(handleFailure);
-    pollingPromise.then(handleSuccess).catch(handleFailure);
-  });
-
-  try {
-    const result = await Promise.race([waitPromise, timeoutPromise]);
-    if (!result) {
-      throw new Error("Transaction wait returned empty result");
-    }
-    return result;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
 export const Web3Provider = ({ children }) => {
   const [walletAddress, setWalletAddress] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -193,27 +48,6 @@ export const Web3Provider = ({ children }) => {
       console.error("Error fetching balance:", e);
     }
   }, []);
-
-  // Helper to fetch dynamic gas parameters with premium overrides to prevent mempool stuck transactions
-  const getGasOverrides = useCallback(async () => {
-    if (!provider) return {};
-    try {
-      const feeData = await provider.getFeeData();
-      if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-        return {
-          maxFeePerGas: (feeData.maxFeePerGas * 125n) / 100n, // 25% premium
-          maxPriorityFeePerGas: (feeData.maxPriorityFeePerGas * 125n) / 100n,
-        };
-      } else if (feeData.gasPrice) {
-        return {
-          gasPrice: (feeData.gasPrice * 125n) / 100n,
-        };
-      }
-    } catch (e) {
-      console.warn("⚠️ [useWeb3] Failed to fetch gas price overrides:", e);
-    }
-    return {};
-  }, [provider]);
 
   // Set up Wallet connection
   const connectWallet = useCallback(async () => {
@@ -410,7 +244,6 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract is not instantiated");
     setTxPending(true);
     try {
-      const overrides = await getGasOverrides();
       const tx = await contract.uploadFile(
         ipfsHash,
         fileName,
@@ -418,11 +251,10 @@ export const Web3Provider = ({ children }) => {
         fileSize,
         encryptedKey,
         fileHash,
-        isPublic,
-        overrides
+        isPublic
       );
       console.log("Transaction dispatched:", tx.hash);
-      const receipt = await waitTx(tx, provider);
+      const receipt = await tx.wait();
       console.log("Transaction confirmed:", receipt.hash);
       setTxPending(false);
       return receipt;
@@ -437,45 +269,27 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const overrides = await getGasOverrides();
-      const tx = await contract.shareFile(fileId, targetAddress, overrides);
-      const receipt = await waitTx(tx, provider);
+      const tx = await contract.shareFile(fileId, targetAddress);
+      const receipt = await tx.wait();
+      setTxPending(false);
       return receipt;
     } catch (e) {
-      throw e;
-    } finally {
       setTxPending(false);
+      throw e;
     }
   };
 
   // 3. Revoke access from a wallet address
-  const revokeAccessOnChain = async (fileIdentifier, targetAddress) => {
+  const revokeAccessOnChain = async (fileId, targetAddress) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const overrides = await getGasOverrides();
-      let tx;
-      if (typeof fileIdentifier === "string") {
-        tx = await contract["revokeAccess(string,address)"](fileIdentifier, targetAddress, overrides);
-      } else {
-        tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress, overrides);
-      }
-      const receipt = await waitTx(tx, provider);
+      const tx = await contract.revokeAccess(fileId, targetAddress);
+      const receipt = await tx.wait();
+      setTxPending(false);
       return receipt;
     } catch (e) {
-      throw e;
-    } finally {
       setTxPending(false);
-    }
-  };
-
-  // Get list of authorized viewers from chain
-  const getFileViewersOnChain = async (fileId) => {
-    if (!contract) throw new Error("Smart contract not instantiated");
-    try {
-      return await contract.getFileViewers(fileId);
-    } catch (e) {
-      console.error("Error fetching file viewers from contract:", e);
       throw e;
     }
   };
@@ -485,14 +299,13 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const overrides = await getGasOverrides();
-      const tx = await contract.toggleVisibility(fileId, isPublic, overrides);
-      const receipt = await waitTx(tx, provider);
+      const tx = await contract.toggleVisibility(fileId, isPublic);
+      const receipt = await tx.wait();
+      setTxPending(false);
       return receipt;
     } catch (e) {
-      throw e;
-    } finally {
       setTxPending(false);
+      throw e;
     }
   };
 
@@ -501,14 +314,13 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const overrides = await getGasOverrides();
-      const tx = await contract.deleteFile(fileId, overrides);
-      const receipt = await waitTx(tx, provider);
+      const tx = await contract.deleteFile(fileId);
+      const receipt = await tx.wait();
+      setTxPending(false);
       return receipt;
     } catch (e) {
-      throw e;
-    } finally {
       setTxPending(false);
+      throw e;
     }
   };
 
@@ -591,8 +403,6 @@ export const Web3Provider = ({ children }) => {
         networkName,
         balance,
         contract,
-        provider,
-        waitTx,
         txPending,
         error,
         connectWallet,
@@ -601,13 +411,11 @@ export const Web3Provider = ({ children }) => {
         uploadFileOnChain,
         shareFileOnChain,
         revokeAccessOnChain,
-        getFileViewersOnChain,
         toggleVisibilityOnChain,
         deleteFileOnChain,
         getMyFilesFromChain,
         getSharedFilesFromChain,
         verifyFileIntegrityOnChain,
-        getGasOverrides,
       }}
     >
       {children}

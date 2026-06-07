@@ -246,12 +246,12 @@ export default function Home() {
         date: new Date(Number(timestamp) * 1000).toISOString()
       });
 
-      logActivity(
+      await logActivity(
         "INTEGRITY_CHECK",
         `Ran blockchain integrity check on file ID ${verifyFileId}. Match: ${isValid ? 'VERIFIED' : 'TAMPERED'}`,
         verifyFile.name,
         verifyFile.size
-      ).catch(e => console.warn("Activity log error:", e));
+      );
 
     } catch (e) {
       console.error("Verification failed:", e);

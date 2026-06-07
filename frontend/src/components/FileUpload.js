@@ -30,23 +30,10 @@ export default function FileUpload({ onUploadSuccess }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [txHash, setTxHash] = useState("");
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStep, setUploadStep] = useState("");
-
   const fileInputRef = useRef(null);
 
-  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract, provider, waitTx, networkName, chainId } = useWeb3();
+  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet } = useWeb3();
   const { masterSeed, logActivity, user } = useAuth();
-
-  const getTxExplorerUrl = (hash) => {
-    if (!hash) return null;
-    const networkLower = networkName?.toLowerCase() || "";
-    if (chainId === "11155111" || networkLower === "sepolia") {
-      return `https://sepolia.etherscan.io/tx/${hash}`;
-    }
-    return null;
-  };
 
   // Handle Drag Over
   const handleDrag = (e) => {
@@ -122,10 +109,6 @@ export default function FileUpload({ onUploadSuccess }) {
     }
 
     setErrorMessage("");
-    setTxHash(""); // Reset any previous transaction hash
-    setIsUploading(true);
-    setUploadProgress(10);
-    setUploadStep("encrypting");
     
     try {
       // --------------------------------------------------
@@ -173,8 +156,6 @@ export default function FileUpload({ onUploadSuccess }) {
       // Phase 2: Upload Encrypted Blob to IPFS (via Backend API proxy)
       // --------------------------------------------------
       setUploadPhase("uploading_ipfs");
-      setUploadStep("uploading_ipfs");
-      setUploadProgress(40);
       console.log("🌐 Uploading to IPFS gateway proxy...");
       
       const formData = new FormData();
@@ -193,53 +174,39 @@ export default function FileUpload({ onUploadSuccess }) {
       // Phase 3: Record metadata to Blockchain via Smart Contract
       // --------------------------------------------------
       setUploadPhase("blockchain_tx");
-      setUploadStep("blockchain_tx");
-      setUploadProgress(70);
       console.log("⛓️ Broadcasting transaction to blockchain...");
 
-      if (!contract) throw new Error("Smart contract not instantiated");
-
-      console.log("⚡ Fetching premium gas overrides...");
-      const overrides = await getGasOverrides();
-
-      const tx = await contract.uploadFile(
+      const receipt = await uploadFileOnChain(
         cid,
         file.name,
         file.type || "application/octet-stream",
         file.size,
         encryptedKey || "unencrypted",
         fileIntegrityHash,
-        isPublic,
-        overrides
+        isPublic
       );
 
-      // Set transaction hash immediately to update loader UI
-      const dispatchedHash = tx.hash || tx.transactionHash;
-      setTxHash(dispatchedHash);
-      setUploadProgress(90);
-      console.log(`⏳ Waiting for transaction confirmation: ${dispatchedHash}...`);
-      const receipt = await waitTx(tx, provider); // Explicit wait with custom polling fallback
-
-      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash || receipt.transactionHash);
+      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
+      setTxHash(receipt.hash);
       setUploadPhase("success");
-      setFile(null); // Clear selected file immediately on success
 
-      // Log activity in backend audit ledger (non-blocking)
-      logActivity(
+      // Log activity in backend audit ledger
+      await logActivity(
         "FILE_UPLOAD",
         `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
         file.name,
         file.size,
-        receipt.hash || receipt.transactionHash
-      ).catch(e => console.warn("Activity log error:", e));
+        receipt.hash
+      );
 
       // Trigger callback
       if (onUploadSuccess) {
         onUploadSuccess();
       }
 
-      // Auto-reset upload phase back to idle after 5 seconds
+      // Reset file selection after a brief delay
       setTimeout(() => {
+        setFile(null);
         setUploadPhase("idle");
       }, 5000);
 
@@ -248,16 +215,10 @@ export default function FileUpload({ onUploadSuccess }) {
       setErrorMessage(err.message || "An unexpected error occurred during upload.");
       setUploadPhase("error");
       
-      // Log activity in backend audit ledger (non-blocking)
-      logActivity(
+      await logActivity(
         "UPLOAD_FAILED",
-        `Failed to upload file ${file?.name || "Unknown"}: ${err.message || 'Unknown error'}`
-      ).catch(e => console.warn("Activity log error:", e));
-    } finally {
-      // Forcefully reset loading indicators and status markers
-      setIsUploading(false);
-      setUploadProgress(0);
-      setUploadStep("");
+        `Failed to upload file ${file?.name}: ${err.message || 'Unknown error'}`
+      );
     }
   };
 
@@ -320,53 +281,34 @@ export default function FileUpload({ onUploadSuccess }) {
       )}
 
       {/* Progressive Phase Loader */}
-      {isUploading && (
+      {uploadPhase !== "idle" && uploadPhase !== "success" && uploadPhase !== "error" && (
         <div className="border border-slate-800/80 rounded-2xl p-8 bg-slate-950/45 backdrop-blur-md flex flex-col items-center">
           <Loader2 className="h-10 w-10 text-cyan-400 animate-spin mb-4" />
           
           <div className="progress-container">
             <div className="status-text">
-              {uploadStep === "encrypting" && "🔒 Locking Vault (AES-GCM Shielding...)"}
-              {uploadStep === "uploading_ipfs" && "🌐 Dispatching to IPFS (Decentralized Pinning...)"}
-              {uploadStep === "blockchain_tx" && "⛓️ Syncing Ledger (Blockchain Registration...)"}
+              {uploadPhase === "encrypting" && "🔒 Locking Vault (AES-GCM Shielding...)"}
+              {uploadPhase === "uploading_ipfs" && "🌐 Dispatching to IPFS (Decentralized Pinning...)"}
+              {uploadPhase === "blockchain_tx" && "⛓️ Syncing Ledger (Blockchain Registration...)"}
             </div>
             
             <div className="progress-bar-background mt-2">
               <div 
                 className="progress-bar-fill" 
-                style={{ width: `${uploadProgress}%` }}
+                style={{
+                  width: 
+                    uploadPhase === "encrypting" ? "33%" : 
+                    uploadPhase === "uploading_ipfs" ? "66%" : "95%"
+                }}
               />
             </div>
           </div>
 
           <p className="text-xs text-slate-400 text-center mt-4 max-w-sm leading-normal">
-            {uploadStep === "encrypting" && "Generating random 256-bit AES key to cryptographically seal the file in memory."}
-            {uploadStep === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
-            {uploadStep === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
+            {uploadPhase === "encrypting" && "Generating random 256-bit AES key to cryptographically seal the file in memory."}
+            {uploadPhase === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
+            {uploadPhase === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
           </p>
-
-          {txHash && (
-            <div className="mt-5 p-3.5 bg-slate-900/50 border border-slate-800/80 rounded-xl text-center w-full max-w-sm">
-              <span className="text-[9px] text-slate-500 uppercase tracking-widest block mb-1 font-bold">Transaction Dispatched</span>
-              {getTxExplorerUrl(txHash) ? (
-                <a 
-                  href={getTxExplorerUrl(txHash)} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-cyan-400 hover:text-cyan-300 underline break-all inline-block hover:scale-102 transition-transform duration-200"
-                >
-                  {txHash}
-                </a>
-              ) : (
-                <span className="text-xs font-mono text-cyan-400 break-all select-all block">
-                  {txHash}
-                </span>
-              )}
-              <span className="text-[10px] text-slate-400 block mt-2 animate-pulse">
-                ⏳ Confirming on {networkName || "blockchain"}...
-              </span>
-            </div>
-          )}
         </div>
       )}
 

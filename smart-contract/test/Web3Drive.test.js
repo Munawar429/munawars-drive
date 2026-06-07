@@ -126,26 +126,7 @@ describe("Web3Drive Smart Contract", function () {
       // Verify user1 has access
       expect(await web3Drive.checkAccess(1, user1.address)).to.be.true;
 
-      await expect(web3Drive["revokeAccess(uint256,address)"](1, user1.address))
-        .to.emit(web3Drive, "AccessRevoked")
-        .withArgs(1, owner.address, user1.address);
-
-      // Access denied again
-      expect(await web3Drive.checkAccess(1, user1.address)).to.be.false;
-      await expect(
-        web3Drive.connect(user1).getFile(1)
-      ).to.be.revertedWith("Web3Drive: Access denied");
-    });
-
-    it("Should revoke access by CID successfully", async function () {
-      await web3Drive.shareFile(1, user1.address);
-      
-      // Verify user1 has access
-      expect(await web3Drive.checkAccess(1, user1.address)).to.be.true;
-
-      // Revoke by CID
-      const ipfsHash = "QmPrivate";
-      await expect(web3Drive["revokeAccess(string,address)"](ipfsHash, user1.address))
+      await expect(web3Drive.revokeAccess(1, user1.address))
         .to.emit(web3Drive, "AccessRevoked")
         .withArgs(1, owner.address, user1.address);
 

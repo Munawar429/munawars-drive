@@ -18,8 +18,7 @@ import {
   Loader2,
   ExternalLink,
   ChevronDown,
-  Copy,
-  Shield
+  Copy
 } from "lucide-react";
 
 export default function FileCard({ file, isSharedView = false, onActionSuccess, onShare, onPreview }) {
@@ -165,22 +164,22 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       setDownloadProgress("");
       setIsProcessing(false);
 
-      logActivity(
+      await logActivity(
         "FILE_DOWNLOAD",
         `Successfully downloaded and decrypted file: ${fileName}`,
         fileName,
         fileSize
-      ).catch(e => console.warn("Activity log error:", e));
+      );
     } catch (e) {
       console.error("Download/Decryption Error:", e);
       alert(`Download Failed: ${e.message}`);
       setDownloadProgress("");
       setIsProcessing(false);
 
-      logActivity(
+      await logActivity(
         "DOWNLOAD_FAILED",
         `Failed to download/decrypt file ${fileName}: ${e.message}`
-      ).catch(e => console.warn("Activity log error:", e));
+      );
     }
   };
 
@@ -300,12 +299,12 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`⛓️ Toggling visbility on blockchain for file ID: ${fileId}...`);
       await toggleVisibilityOnChain(fileId, !isPublic);
       
-      logActivity(
+      await logActivity(
         "VISIBILITY_TOGGLE",
         `Toggled visibility of file ${fileName} to ${!isPublic ? 'Public' : 'Private'}`,
         fileName,
         fileSize
-      ).catch(e => console.warn("Activity log error:", e));
+      );
 
       if (onActionSuccess) onActionSuccess();
     } catch (e) {
@@ -324,12 +323,12 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`⛓️ Deleting file record on blockchain, file ID: ${fileId}...`);
       await deleteFileOnChain(fileId);
       
-      logActivity(
+      await logActivity(
         "FILE_DELETED",
         `Marked file ${fileName} as deleted on-chain`,
         fileName,
         fileSize
-      ).catch(e => console.warn("Activity log error:", e));
+      );
 
       if (onActionSuccess) onActionSuccess();
     } catch (e) {
@@ -471,17 +470,6 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
               title="Share Key Access"
             >
               <Share2 className="h-3.5 w-3.5" />
-            </button>
-          )}
-
-          {/* Manage Access / Revoke Control */}
-          {!isSharedView && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onShare && onShare(file); }}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
-              title="Manage Access / Revoke"
-            >
-              <Shield className="h-3.5 w-3.5" />
             </button>
           )}
 
