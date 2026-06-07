@@ -25,47 +25,56 @@ const waitTx = async (tx, provider, timeoutMs = 180000) => {
     }, timeoutMs);
   });
 
-  const waitPromise = (async () => {
-    // 1. Try standard Ethers wait with a fast race (12 seconds)
+  // 1. Set up fallback provider for Sepolia network if needed
+  let fallbackProvider = null;
+  try {
+    const network = await provider?.getNetwork();
+    if (network && Number(network.chainId) === 11155111) {
+      try {
+        fallbackProvider = new ethers.JsonRpcProvider("https://rpc.ankr.com/eth_sepolia");
+        await fallbackProvider.getBlockNumber(); // verify connection
+        console.log("🌐 [waitTx] Initialized fallback public Sepolia provider (Ankr).");
+      } catch (err) {
+        console.warn("⚠️ [waitTx] Failed to connect to Ankr Sepolia RPC, using publicnode fallback...");
+        fallbackProvider = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ [waitTx] Could not initialize fallback provider:", e);
+  }
+
+  // 2. Standard wait promise (handles replacement events: speed up / cancel)
+  const standardWaitPromise = (async () => {
     try {
-      const standardWait = tx.wait();
-      const standardReceipt = await Promise.race([
-        standardWait,
-        new Promise((resolve) => setTimeout(() => resolve(null), 12000))
-      ]);
-      
-      if (standardReceipt) {
-        console.log(`✅ [waitTx] Confirmed via standard wait():`, standardReceipt.hash || standardReceipt.transactionHash);
-        if (standardReceipt.status === 0 || Number(standardReceipt.status) === 0) {
+      const receipt = await tx.wait();
+      if (receipt) {
+        console.log(`✅ [waitTx] Confirmed via standard wait():`, receipt.hash || receipt.transactionHash);
+        if (receipt.status === 0 || Number(receipt.status) === 0) {
           throw new Error("Transaction reverted on-chain");
         }
-        return standardReceipt;
+        return receipt;
       }
-      console.log(`⚠️ [waitTx] Standard wait() is taking longer than 12s. Falling back to manual polling...`);
     } catch (err) {
-      console.warn("⚠️ [waitTx] Standard tx.wait() threw or rejected:", err);
-      // Bubble up reverts or failures immediately
-      if (err.message && (err.message.includes("revert") || err.message.includes("failed") || err.message.includes("status: 0"))) {
-        throw err;
+      if (err.code === "TRANSACTION_REPLACED" || err.message?.includes("REPLACED")) {
+        console.log("🔄 [waitTx] Standard wait detected transaction replacement/speed-up.");
+        if (err.receipt) {
+          if (err.receipt.status === 0 || Number(err.receipt.status) === 0) {
+            throw new Error("Replacement transaction reverted on-chain");
+          }
+          return err.receipt;
+        }
       }
+      console.warn("⚠️ [waitTx] Standard tx.wait() rejected:", err);
+      throw err;
     }
+    throw new Error("Standard wait returned empty");
+  })();
 
-    // 2. Set up fallback provider for Sepolia network if needed
-    let fallbackProvider = null;
-    try {
-      const network = await provider?.getNetwork();
-      if (network && Number(network.chainId) === 11155111) {
-        fallbackProvider = new ethers.JsonRpcProvider("https://rpc.ankr.com/eth_sepolia");
-        console.log("🌐 [waitTx] Initialized fallback public Sepolia provider for transaction tracking.");
-      }
-    } catch (e) {
-      console.warn("⚠️ [waitTx] Could not initialize fallback provider:", e);
-    }
-
-    // 3. Manual polling loop
+  // 3. Direct RPC polling promise (handles lagging wallet provider event listeners)
+  const pollingPromise = (async () => {
     if (!provider && !fallbackProvider) {
-      console.warn("⚠️ [waitTx] Provider not available, waiting on standard wait()...");
-      return await tx.wait();
+      await new Promise((resolve) => setTimeout(resolve, timeoutMs));
+      throw new Error("No provider available for polling");
     }
 
     const start = Date.now();
@@ -83,13 +92,10 @@ const waitTx = async (tx, provider, timeoutMs = 180000) => {
           }
         } catch (pollErr) {
           console.warn("⚠️ [waitTx] Primary provider polling receipt fetch error:", pollErr);
-          if (pollErr.message && pollErr.message.includes("revert")) {
-            throw pollErr;
-          }
         }
       }
 
-      // Poll fallback provider (Ankr Sepolia RPC)
+      // Poll fallback provider (Ankr / Publicnode)
       if (fallbackProvider) {
         try {
           const receipt = await fallbackProvider.getTransactionReceipt(tx.hash);
@@ -107,8 +113,33 @@ const waitTx = async (tx, provider, timeoutMs = 180000) => {
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
-    throw new Error("Transaction confirmation timed out.");
+    throw new Error("Polling timeout");
   })();
+
+  // 4. Custom race: resolve to first successful receipt, reject only if both fail
+  const waitPromise = new Promise((resolve, reject) => {
+    let resolved = false;
+    let errors = [];
+
+    const handleSuccess = (receipt) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(receipt);
+    };
+
+    const handleFailure = (err) => {
+      errors.push(err);
+      if (errors.length >= 2) {
+        if (!resolved) {
+          resolved = true;
+          reject(errors[0] || new Error("All transaction confirmations failed."));
+        }
+      }
+    };
+
+    standardWaitPromise.then(handleSuccess).catch(handleFailure);
+    pollingPromise.then(handleSuccess).catch(handleFailure);
+  });
 
   try {
     const result = await Promise.race([waitPromise, timeoutPromise]);
@@ -162,6 +193,27 @@ export const Web3Provider = ({ children }) => {
       console.error("Error fetching balance:", e);
     }
   }, []);
+
+  // Helper to fetch dynamic gas parameters with premium overrides to prevent mempool stuck transactions
+  const getGasOverrides = useCallback(async () => {
+    if (!provider) return {};
+    try {
+      const feeData = await provider.getFeeData();
+      if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+        return {
+          maxFeePerGas: (feeData.maxFeePerGas * 125n) / 100n, // 25% premium
+          maxPriorityFeePerGas: (feeData.maxPriorityFeePerGas * 125n) / 100n,
+        };
+      } else if (feeData.gasPrice) {
+        return {
+          gasPrice: (feeData.gasPrice * 125n) / 100n,
+        };
+      }
+    } catch (e) {
+      console.warn("⚠️ [useWeb3] Failed to fetch gas price overrides:", e);
+    }
+    return {};
+  }, [provider]);
 
   // Set up Wallet connection
   const connectWallet = useCallback(async () => {
@@ -358,6 +410,7 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract is not instantiated");
     setTxPending(true);
     try {
+      const overrides = await getGasOverrides();
       const tx = await contract.uploadFile(
         ipfsHash,
         fileName,
@@ -365,7 +418,8 @@ export const Web3Provider = ({ children }) => {
         fileSize,
         encryptedKey,
         fileHash,
-        isPublic
+        isPublic,
+        overrides
       );
       console.log("Transaction dispatched:", tx.hash);
       const receipt = await waitTx(tx, provider);
@@ -383,7 +437,8 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const tx = await contract.shareFile(fileId, targetAddress);
+      const overrides = await getGasOverrides();
+      const tx = await contract.shareFile(fileId, targetAddress, overrides);
       const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
@@ -398,11 +453,12 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
+      const overrides = await getGasOverrides();
       let tx;
       if (typeof fileIdentifier === "string") {
-        tx = await contract["revokeAccess(string,address)"](fileIdentifier, targetAddress);
+        tx = await contract["revokeAccess(string,address)"](fileIdentifier, targetAddress, overrides);
       } else {
-        tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress);
+        tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress, overrides);
       }
       const receipt = await waitTx(tx, provider);
       return receipt;
@@ -429,7 +485,8 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const tx = await contract.toggleVisibility(fileId, isPublic);
+      const overrides = await getGasOverrides();
+      const tx = await contract.toggleVisibility(fileId, isPublic, overrides);
       const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
@@ -444,7 +501,8 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const tx = await contract.deleteFile(fileId);
+      const overrides = await getGasOverrides();
+      const tx = await contract.deleteFile(fileId, overrides);
       const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
@@ -549,6 +607,7 @@ export const Web3Provider = ({ children }) => {
         getMyFilesFromChain,
         getSharedFilesFromChain,
         verifyFileIntegrityOnChain,
+        getGasOverrides,
       }}
     >
       {children}

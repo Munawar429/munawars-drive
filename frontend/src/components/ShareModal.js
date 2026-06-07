@@ -19,7 +19,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [resolvedAddress, setResolvedAddress] = useState("");
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
-  const { contract, provider, estimateGasFees } = useWeb3();
+  const { contract, provider, getGasOverrides, estimateGasFees } = useWeb3();
   const { logActivity, masterSeed, user } = useAuth();
 
   const [viewers, setViewers] = useState([]);
@@ -170,7 +170,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       console.log(`⛓️ [KeyExchange] Requesting wallet signature for share permission: File ${file.fileName} -> Wallet ${normalizedTarget}...`);
       if (!contract) throw new Error("Smart contract not instantiated. Connect your wallet first.");
       
-      const tx = await contract.shareFile(Number(file.id), normalizedTarget);
+      console.log("⚡ Fetching premium gas overrides...");
+      const overrides = await getGasOverrides();
+      const tx = await contract.shareFile(Number(file.id), normalizedTarget, overrides);
       console.log("✅ Transaction approved and dispatched. Tx hash:", tx.hash);
 
       // 5. Transaction is sent, now show "Broadcasting..." / loading state
@@ -248,7 +250,9 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
       // 1. Prompt user to sign the revoke transaction in their wallet (before showing Broadcasting)
       console.log("🖋️ Requesting wallet signature for access revocation...");
-      const tx = await contract["revokeAccess(string,address)"](file.ipfsHash, recipientAddress);
+      console.log("⚡ Fetching premium gas overrides...");
+      const overrides = await getGasOverrides();
+      const tx = await contract["revokeAccess(string,address)"](file.ipfsHash, recipientAddress, overrides);
       console.log("✅ Revoke transaction approved and dispatched. Tx hash:", tx.hash);
 
       // 2. Transaction is sent, now show "Broadcasting..." / loading state

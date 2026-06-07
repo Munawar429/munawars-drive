@@ -199,6 +199,9 @@ export default function FileUpload({ onUploadSuccess }) {
 
       if (!contract) throw new Error("Smart contract not instantiated");
 
+      console.log("⚡ Fetching premium gas overrides...");
+      const overrides = await getGasOverrides();
+
       const tx = await contract.uploadFile(
         cid,
         file.name,
@@ -206,7 +209,8 @@ export default function FileUpload({ onUploadSuccess }) {
         file.size,
         encryptedKey || "unencrypted",
         fileIntegrityHash,
-        isPublic
+        isPublic,
+        overrides
       );
 
       // Set transaction hash immediately to update loader UI
