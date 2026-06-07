@@ -36,7 +36,7 @@ export default function FileUpload({ onUploadSuccess }) {
 
   const fileInputRef = useRef(null);
 
-  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract } = useWeb3();
+  const { uploadFileOnChain, estimateGasFees, isConnected, connectWallet, contract, provider, waitTx } = useWeb3();
   const { masterSeed, logActivity, user } = useAuth();
 
   // Handle Drag Over
@@ -201,21 +201,21 @@ export default function FileUpload({ onUploadSuccess }) {
 
       setUploadProgress(90);
       console.log("⏳ Waiting for transaction confirmation...");
-      const receipt = await tx.wait(); // Explicit wait for mining
+      const receipt = await waitTx(tx, provider); // Explicit wait with custom polling fallback
 
-      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
-      setTxHash(receipt.hash);
+      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash || receipt.transactionHash);
+      setTxHash(receipt.hash || receipt.transactionHash);
       setUploadPhase("success");
       setFile(null); // Clear selected file immediately on success
 
-      // Log activity in backend audit ledger
-      await logActivity(
+      // Log activity in backend audit ledger (non-blocking)
+      logActivity(
         "FILE_UPLOAD",
         `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
         file.name,
         file.size,
-        receipt.hash
-      );
+        receipt.hash || receipt.transactionHash
+      ).catch(e => console.warn("Activity log error:", e));
 
       // Trigger callback
       if (onUploadSuccess) {
@@ -232,10 +232,11 @@ export default function FileUpload({ onUploadSuccess }) {
       setErrorMessage(err.message || "An unexpected error occurred during upload.");
       setUploadPhase("error");
       
-      await logActivity(
+      // Log activity in backend audit ledger (non-blocking)
+      logActivity(
         "UPLOAD_FAILED",
-        `Failed to upload file ${file?.name}: ${err.message || 'Unknown error'}`
-      );
+        `Failed to upload file ${file?.name || "Unknown"}: ${err.message || 'Unknown error'}`
+      ).catch(e => console.warn("Activity log error:", e));
     } finally {
       // Forcefully reset loading indicators and status markers
       setIsUploading(false);

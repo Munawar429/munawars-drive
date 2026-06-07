@@ -165,22 +165,22 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       setDownloadProgress("");
       setIsProcessing(false);
 
-      await logActivity(
+      logActivity(
         "FILE_DOWNLOAD",
         `Successfully downloaded and decrypted file: ${fileName}`,
         fileName,
         fileSize
-      );
+      ).catch(e => console.warn("Activity log error:", e));
     } catch (e) {
       console.error("Download/Decryption Error:", e);
       alert(`Download Failed: ${e.message}`);
       setDownloadProgress("");
       setIsProcessing(false);
 
-      await logActivity(
+      logActivity(
         "DOWNLOAD_FAILED",
         `Failed to download/decrypt file ${fileName}: ${e.message}`
-      );
+      ).catch(e => console.warn("Activity log error:", e));
     }
   };
 
@@ -300,12 +300,12 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`⛓️ Toggling visbility on blockchain for file ID: ${fileId}...`);
       await toggleVisibilityOnChain(fileId, !isPublic);
       
-      await logActivity(
+      logActivity(
         "VISIBILITY_TOGGLE",
         `Toggled visibility of file ${fileName} to ${!isPublic ? 'Public' : 'Private'}`,
         fileName,
         fileSize
-      );
+      ).catch(e => console.warn("Activity log error:", e));
 
       if (onActionSuccess) onActionSuccess();
     } catch (e) {
@@ -324,12 +324,12 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`⛓️ Deleting file record on blockchain, file ID: ${fileId}...`);
       await deleteFileOnChain(fileId);
       
-      await logActivity(
+      logActivity(
         "FILE_DELETED",
         `Marked file ${fileName} as deleted on-chain`,
         fileName,
         fileSize
-      );
+      ).catch(e => console.warn("Activity log error:", e));
 
       if (onActionSuccess) onActionSuccess();
     } catch (e) {

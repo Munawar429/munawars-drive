@@ -200,14 +200,14 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
       setSuccessMessage(`Access successfully granted to: ${normalizedTarget.slice(0, 10)}...${normalizedTarget.slice(-8)}`);
       
-      // Log event
-      await logActivity(
+      // Log event (non-blocking)
+      logActivity(
         "FILE_SHARE",
         `Shared file ${file.fileName} with wallet: ${normalizedTarget}`,
         file.fileName,
         Number(file.fileSize),
-        receipt.hash
-      );
+        receipt.hash || receipt.transactionHash
+      ).catch(e => console.warn("Activity log error:", e));
 
       if (onShareSuccess) {
         onShareSuccess();
@@ -247,14 +247,14 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       console.log(`📡 [Revoke] Deleting shared key record from database...`);
       await axios.delete(`${API_URL}/ipfs/share-key/${Number(file.id)}/${recipientAddress}`);
 
-      // 3. Log activity
-      await logActivity(
+      // 3. Log activity (non-blocking)
+      logActivity(
         "REVOKE_ACCESS",
         `Revoked access to file ${file.fileName} from wallet: ${recipientAddress}`,
         file.fileName,
         Number(file.fileSize),
-        receipt.hash
-      );
+        receipt.hash || receipt.transactionHash
+      ).catch(e => console.warn("Activity log error:", e));
 
       setSuccessMessage(`Access successfully revoked from: ${recipientAddress.slice(0, 6)}...${recipientAddress.slice(-4)}`);
       

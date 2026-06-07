@@ -7,6 +7,88 @@ import Web3DriveConfig from "../utils/Web3Drive.json";
 const Web3Context = createContext(null);
 const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || Web3DriveConfig.address;
 
+/**
+ * Helper to wait for transaction confirmation with a manual polling fallback.
+ * Prevents Ethers v6 standard wait() from hanging indefinitely in browser provider environments.
+ */
+const waitTx = async (tx, provider, timeoutMs = 90000) => {
+  if (!tx || !tx.hash) {
+    throw new Error("Invalid transaction object");
+  }
+
+  console.log(`⏳ [waitTx] Monitoring transaction ${tx.hash} (Timeout: ${timeoutMs}ms)...`);
+
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("Transaction confirmation timed out. Please check your wallet or block explorer."));
+    }, timeoutMs);
+  });
+
+  const waitPromise = (async () => {
+    // 1. Try standard Ethers wait with a fast race (12 seconds)
+    try {
+      const standardWait = tx.wait();
+      const standardReceipt = await Promise.race([
+        standardWait,
+        new Promise((resolve) => setTimeout(() => resolve(null), 12000))
+      ]);
+      
+      if (standardReceipt) {
+        console.log(`✅ [waitTx] Confirmed via standard wait():`, standardReceipt.hash || standardReceipt.transactionHash);
+        if (standardReceipt.status === 0 || Number(standardReceipt.status) === 0) {
+          throw new Error("Transaction reverted on-chain");
+        }
+        return standardReceipt;
+      }
+      console.log(`⚠️ [waitTx] Standard wait() is taking longer than 12s. Falling back to manual polling...`);
+    } catch (err) {
+      console.warn("⚠️ [waitTx] Standard tx.wait() threw or rejected:", err);
+      // Bubble up reverts or failures immediately
+      if (err.message && (err.message.includes("revert") || err.message.includes("failed") || err.message.includes("status: 0"))) {
+        throw err;
+      }
+    }
+
+    // 2. Manual polling loop
+    if (!provider) {
+      console.warn("⚠️ [waitTx] Provider not available, waiting on standard wait()...");
+      return await tx.wait();
+    }
+
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs - 3000) {
+      try {
+        const receipt = await provider.getTransactionReceipt(tx.hash);
+        if (receipt) {
+          console.log(`✅ [waitTx] Confirmed via manual polling after ${Date.now() - start}ms`);
+          if (receipt.status === 0 || Number(receipt.status) === 0) {
+            throw new Error("Transaction reverted on-chain");
+          }
+          return receipt;
+        }
+      } catch (pollErr) {
+        console.warn("⚠️ [waitTx] Manual polling receipt fetch error:", pollErr);
+        if (pollErr.message && pollErr.message.includes("revert")) {
+          throw pollErr;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    throw new Error("Transaction confirmation timed out.");
+  })();
+
+  try {
+    const result = await Promise.race([waitPromise, timeoutPromise]);
+    if (!result) {
+      throw new Error("Transaction wait returned empty result");
+    }
+    return result;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const Web3Provider = ({ children }) => {
   const [walletAddress, setWalletAddress] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -254,7 +336,7 @@ export const Web3Provider = ({ children }) => {
         isPublic
       );
       console.log("Transaction dispatched:", tx.hash);
-      const receipt = await tx.wait();
+      const receipt = await waitTx(tx, provider);
       console.log("Transaction confirmed:", receipt.hash);
       setTxPending(false);
       return receipt;
@@ -270,7 +352,7 @@ export const Web3Provider = ({ children }) => {
     setTxPending(true);
     try {
       const tx = await contract.shareFile(fileId, targetAddress);
-      const receipt = await tx.wait();
+      const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
       throw e;
@@ -290,7 +372,7 @@ export const Web3Provider = ({ children }) => {
       } else {
         tx = await contract["revokeAccess(uint256,address)"](fileIdentifier, targetAddress);
       }
-      const receipt = await tx.wait();
+      const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
       throw e;
@@ -316,7 +398,7 @@ export const Web3Provider = ({ children }) => {
     setTxPending(true);
     try {
       const tx = await contract.toggleVisibility(fileId, isPublic);
-      const receipt = await tx.wait();
+      const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
       throw e;
@@ -331,7 +413,7 @@ export const Web3Provider = ({ children }) => {
     setTxPending(true);
     try {
       const tx = await contract.deleteFile(fileId);
-      const receipt = await tx.wait();
+      const receipt = await waitTx(tx, provider);
       return receipt;
     } catch (e) {
       throw e;
@@ -419,6 +501,8 @@ export const Web3Provider = ({ children }) => {
         networkName,
         balance,
         contract,
+        provider,
+        waitTx,
         txPending,
         error,
         connectWallet,
