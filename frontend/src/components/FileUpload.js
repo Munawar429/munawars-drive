@@ -176,39 +176,51 @@ export default function FileUpload({ onUploadSuccess }) {
       setUploadPhase("blockchain_tx");
       console.log("⛓️ Broadcasting transaction to blockchain...");
 
-      const receipt = await uploadFileOnChain(
-        cid,
-        file.name,
-        file.type || "application/octet-stream",
-        file.size,
-        encryptedKey || "unencrypted",
-        fileIntegrityHash,
-        isPublic
-      );
+      try {
+        const receipt = await uploadFileOnChain(
+          cid,
+          file.name,
+          file.type || "application/octet-stream",
+          file.size,
+          encryptedKey || "unencrypted",
+          fileIntegrityHash,
+          isPublic
+        );
 
-      console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
-      setTxHash(receipt.hash);
-      setUploadPhase("success");
+        console.log("🎉 File stored on-chain! Transaction confirmed:", receipt.hash);
+        setTxHash(receipt.hash);
+        setUploadPhase("success");
+        setFile(null); // Clear selected file immediately on success
 
-      // Log activity in backend audit ledger
-      await logActivity(
-        "FILE_UPLOAD",
-        `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
-        file.name,
-        file.size,
-        receipt.hash
-      );
+        // Log activity in backend audit ledger
+        await logActivity(
+          "FILE_UPLOAD",
+          `Uploaded encrypted file ${file.name} to IPFS (${cid}) & recorded on-chain`,
+          file.name,
+          file.size,
+          receipt.hash
+        );
 
-      // Trigger callback
-      if (onUploadSuccess) {
-        onUploadSuccess();
+        // Trigger callback
+        if (onUploadSuccess) {
+          onUploadSuccess();
+        }
+
+        // Auto-reset upload phase back to idle after 5 seconds
+        setTimeout(() => {
+          setUploadPhase("idle");
+        }, 5000);
+
+      } catch (txErr) {
+        console.error("On-chain transaction failed:", txErr);
+        setErrorMessage(txErr.message || "MetaMask transaction failed or was rejected.");
+        setUploadPhase("error");
+        
+        await logActivity(
+          "UPLOAD_FAILED",
+          `Failed to record file ${file?.name} on-chain: ${txErr.message || 'Unknown error'}`
+        );
       }
-
-      // Reset file selection after a brief delay
-      setTimeout(() => {
-        setFile(null);
-        setUploadPhase("idle");
-      }, 5000);
 
     } catch (err) {
       console.error("Upload failure:", err);
