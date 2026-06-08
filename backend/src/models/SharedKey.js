@@ -40,7 +40,7 @@ try {
 class SharedKeyAdapter {
   async findOne(query = {}) {
     const normalized = { ...query };
-    if (normalized.recipientAddress) {
+    if (normalized.recipientAddress && typeof normalized.recipientAddress === "string") {
       normalized.recipientAddress = normalized.recipientAddress.toLowerCase();
     }
     if (normalized.fileId) {
@@ -86,7 +86,7 @@ class SharedKeyAdapter {
 
   async find(query = {}) {
     const normalized = { ...query };
-    if (normalized.recipientAddress) {
+    if (normalized.recipientAddress && typeof normalized.recipientAddress === "string") {
       normalized.recipientAddress = normalized.recipientAddress.toLowerCase();
     }
     if (normalized.fileId) {
@@ -102,7 +102,7 @@ class SharedKeyAdapter {
 
   async deleteOne(query = {}) {
     const normalized = { ...query };
-    if (normalized.recipientAddress) {
+    if (normalized.recipientAddress && typeof normalized.recipientAddress === "string") {
       normalized.recipientAddress = normalized.recipientAddress.toLowerCase();
     }
     if (normalized.fileId) {

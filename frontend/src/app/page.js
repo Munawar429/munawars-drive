@@ -102,7 +102,8 @@ export default function Home() {
     getMyFilesFromChain, 
     getSharedFilesFromChain, 
     verifyFileIntegrityOnChain,
-    revokeAccessOnChain
+    revokeAccessOnChain,
+    contract
   } = useWeb3();
 
   // Avoid Hydration SSR mismatches
@@ -186,7 +187,7 @@ export default function Home() {
         fetchActivityLogs();
       }
     }
-  }, [isAuthenticated, activeTab, isConnected]);
+  }, [isAuthenticated, activeTab, isConnected, contract]);
 
   // Initial Data fetch on auth or wallet connection
   useEffect(() => {
@@ -195,7 +196,7 @@ export default function Home() {
       fetchActivityLogs();
       fetchSharesData();
     }
-  }, [isAuthenticated, isConnected]);
+  }, [isAuthenticated, isConnected, contract]);
 
   // Handle outbound share revocation
   const handleRevokeShare = async (fileId, recipientAddress, ipfsHash, fileName, fileSize) => {
@@ -888,6 +889,7 @@ export default function Home() {
                       file={file}
                       isSharedView={true}
                       onPreview={handlePreviewTrigger}
+                      onActionSuccess={refreshDashboard}
                     />
                   ))}
                 </div>

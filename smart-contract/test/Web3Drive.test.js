@@ -243,6 +243,13 @@ describe("Web3Drive Smart Contract", function () {
       expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.true;
     });
 
+    it("Should populate sharedFiles and getSharedWithMe after grantAccess", async function () {
+      await web3Drive.grantAccess(fileIdBytes32, user1.address);
+      const shared = await web3Drive.connect(user1).getSharedWithMe();
+      expect(shared.length).to.equal(1);
+      expect(shared[0].ipfsHash).to.equal(ipfsHash);
+    });
+
     it("Should allow owner to revoke bytes32 access", async function () {
       await web3Drive.grantAccess(fileIdBytes32, user1.address);
       expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.true;

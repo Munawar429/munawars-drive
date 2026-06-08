@@ -248,7 +248,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.log(`⛓️ Voluntarily revoking own access to file CID: ${ipfsHash}...`);
       await revokeAccessOnChain(ipfsHash, walletAddress);
 
-      console.log(`📡 Cleaning up shared key record for ${walletAddress}...`);
+      console.log(`📡 Cleaning up shared key record. Target File ID: ${fileId}, Recipient Address: ${walletAddress}`);
+      console.log(`Calling DELETE: ${API_URL}/ipfs/share-key/${fileId}/${walletAddress}`);
       await axios.delete(`${API_URL}/ipfs/share-key/${fileId}/${walletAddress}`);
 
       await logActivity(

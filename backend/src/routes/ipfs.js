@@ -350,8 +350,8 @@ router.delete("/share-key/:fileId/:recipientAddress", protect, async (req, res) 
 
   try {
     const deleted = await SharedKey.deleteOne({
-      fileId,
-      recipientAddress: recipientAddress.toLowerCase()
+      fileId: String(fileId),
+      recipientAddress: { $regex: new RegExp(`^${recipientAddress}$`, "i") }
     });
 
     console.log(`🗑️ Cryptographic key deleted from database for: ${recipientAddress} (File ID: ${fileId})`);

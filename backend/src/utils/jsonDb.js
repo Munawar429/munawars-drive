@@ -42,9 +42,18 @@ class JsonCollection {
   async find(query = {}) {
     return this.data.filter(item => {
       for (const key in query) {
-        // Simple exact match
-        if (query[key] !== item[key]) {
-          return false;
+        const qVal = query[key];
+        const iVal = item[key];
+        if (qVal && typeof qVal === "object" && "$regex" in qVal) {
+          const regex = qVal["$regex"];
+          const pattern = regex instanceof RegExp ? regex : new RegExp(regex);
+          if (!pattern.test(String(iVal))) {
+            return false;
+          }
+        } else {
+          if (qVal !== iVal) {
+            return false;
+          }
         }
       }
       return true;
@@ -99,8 +108,18 @@ class JsonCollection {
   async deleteOne(query = {}) {
     const idx = this.data.findIndex(item => {
       for (const key in query) {
-        if (query[key] !== item[key]) {
-          return false;
+        const qVal = query[key];
+        const iVal = item[key];
+        if (qVal && typeof qVal === "object" && "$regex" in qVal) {
+          const regex = qVal["$regex"];
+          const pattern = regex instanceof RegExp ? regex : new RegExp(regex);
+          if (!pattern.test(String(iVal))) {
+            return false;
+          }
+        } else {
+          if (qVal !== iVal) {
+            return false;
+          }
         }
       }
       return true;
