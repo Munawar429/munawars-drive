@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { X, Send, Coins, ShieldCheck, Loader2 } from "lucide-react";
+import { X, Send, Coins, ShieldCheck, Loader2, Users } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
 import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA } from "../utils/crypto.js";
@@ -19,8 +19,25 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   const [resolvedAddress, setResolvedAddress] = useState("");
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
-  const { shareFileOnChain, estimateGasFees } = useWeb3();
+  const { shareFileOnChain, revokeAccessOnChain, estimateGasFees } = useWeb3();
   const { logActivity, masterSeed, user } = useAuth();
+
+  const [viewers, setViewers] = useState([]);
+  const [isLoadingViewers, setIsLoadingViewers] = useState(false);
+
+  const fetchViewers = async () => {
+    if (!file) return;
+    setIsLoadingViewers(true);
+    try {
+      const res = await axios.get(`${API_URL}/ipfs/shares/${Number(file.id)}`);
+      if (res.data && res.data.shares) {
+        setViewers(res.data.shares);
+      }
+    } catch (e) {
+      console.error("Failed to fetch viewers:", e);
+    }
+    setIsLoadingViewers(false);
+  };
 
   useEffect(() => {
     if (!isOpen || !file) return;
@@ -43,6 +60,8 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setIsResolvingEns(false);
     setErrorMessage("");
     setSuccessMessage("");
+
+    fetchViewers();
   }, [isOpen, file, estimateGasFees]);
 
   // Resolve ENS name if targetAddress matches the pattern
@@ -173,13 +192,18 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         receipt.hash
       );
 
+      // Reset targets and refresh viewers list dynamically
+      setTargetAddress("");
+      setResolvedAddress("");
+      await fetchViewers();
+
       if (onShareSuccess) {
         onShareSuccess();
       }
 
       setTimeout(() => {
-        onClose();
-      }, 3000);
+        setSuccessMessage("");
+      }, 4000);
 
     } catch (err) {
       console.error("Failed to share file:", err);
@@ -187,6 +211,50 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     }
     
     setIsProcessing(false);
+  };
+
+  const handleRevoke = async (recipientAddress) => {
+    if (!confirm(`Are you sure you want to revoke access for ${recipientAddress}?`)) return;
+
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsProcessing(true);
+
+    try {
+      console.log(`⛓️ [Revoke] Initializing on-chain access revocation for file ID ${file.id} and recipient ${recipientAddress}...`);
+      
+      const receipt = await revokeAccessOnChain(Number(file.id), recipientAddress);
+      console.log("🎉 On-chain revocation confirmed:", receipt.hash);
+
+      console.log(`📡 [Revoke] Deleting shared key record from database...`);
+      await axios.delete(`${API_URL}/ipfs/share-key/${Number(file.id)}/${recipientAddress}`);
+
+      await logActivity(
+        "REVOKE_ACCESS",
+        `Revoked access to file ${file.fileName} from wallet: ${recipientAddress}`,
+        file.fileName,
+        Number(file.fileSize),
+        receipt.hash
+      );
+
+      setSuccessMessage(`Access successfully revoked from: ${recipientAddress.slice(0, 6)}...${recipientAddress.slice(-4)}`);
+      
+      await fetchViewers();
+
+      if (onShareSuccess) {
+        onShareSuccess();
+      }
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 4000);
+
+    } catch (err) {
+      console.error("Failed to revoke access:", err);
+      setErrorMessage(err.message || "Failed to revoke access on-chain.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -206,95 +274,132 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
           </button>
         </div>
 
-        {/* Success View */}
-        {successMessage ? (
-          <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-6 flex flex-col items-center text-center my-4">
-            <ShieldCheck className="h-10 w-10 text-emerald-400 mb-2" />
-            <h4 className="text-sm font-bold text-slate-200">Vault Access Authorized!</h4>
-            <p className="text-xs text-slate-400 mt-2">
+        {/* Success Alert Banner */}
+        {successMessage && (
+          <div className="mb-4 border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-3 flex items-center gap-2.5 text-xs text-slate-350">
+            <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+            <div className="truncate flex-1">
+              <span className="font-bold text-emerald-400">Success: </span>
               {successMessage}
-            </p>
+            </div>
           </div>
-        ) : (
-          <form onSubmit={handleShare} className="space-y-4">
-            {/* Target Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
-                Target Wallet Address or ENS Name
-              </label>
-              <input
-                type="text"
-                value={targetAddress}
-                onChange={(e) => setTargetAddress(e.target.value)}
-                placeholder="0x... or name.eth"
-                className="w-full glass-input font-mono"
-                disabled={isProcessing}
-                required
-              />
-              {isResolvingEns && (
-                <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1.5 animate-pulse mt-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Resolving ENS name...</span>
-                </div>
-              )}
-              {!isResolvingEns && resolvedAddress && targetAddress.toLowerCase().endsWith(".eth") && (
-                <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-slate-950/60 p-2 rounded border border-emerald-500/10 truncate">
-                  🟢 Resolved: {resolvedAddress}
-                </div>
-              )}
-            </div>
+        )}
 
-            {/* Warning description */}
-            <p className="text-[11px] text-slate-500 leading-normal bg-slate-950/40 p-3 rounded-lg border border-slate-900">
-              💡 <b>Decentralized Security Note:</b> This operation records the access permissions on the blockchain. The shared user will download the encrypted document from IPFS and decrypt it client-side.
-            </p>
-
-            {/* Gas fee cost estimation */}
-            <div className="p-3.5 rounded-lg bg-slate-900/30 border border-slate-800/40 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-400 font-medium">
-                <Coins className="h-3.5 w-3.5 text-violet-400 animate-pulse" />
-                <span>Gas Estimation:</span>
-              </div>
-              <span className="font-mono text-slate-300 font-semibold">~{estimatedGas} ETH</span>
-            </div>
-
-            {/* Error notifications */}
-            {errorMessage && (
-              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs leading-normal">
-                ⚠️ {errorMessage}
+        <form onSubmit={handleShare} className="space-y-4">
+          {/* Target Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
+              Target Wallet Address or ENS Name
+            </label>
+            <input
+              type="text"
+              value={targetAddress}
+              onChange={(e) => setTargetAddress(e.target.value)}
+              placeholder="0x... or name.eth"
+              className="w-full glass-input font-mono"
+              disabled={isProcessing}
+              required
+            />
+            {isResolvingEns && (
+              <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1.5 animate-pulse mt-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Resolving ENS name...</span>
               </div>
             )}
+            {!isResolvingEns && resolvedAddress && targetAddress.toLowerCase().endsWith(".eth") && (
+              <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-slate-950/60 p-2 rounded border border-emerald-500/10 truncate">
+                🟢 Resolved: {resolvedAddress}
+              </div>
+            )}
+          </div>
 
-            {/* Actions Footer */}
-            <div className="flex gap-3 border-t border-slate-900/60 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 glass-btn-secondary py-2.5 text-xs"
-                disabled={isProcessing}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isProcessing}
-                className="flex-1 glass-btn-primary py-2.5 text-xs font-bold shadow-lg shadow-violet-600/10 cursor-pointer"
-              >
-                {isProcessing ? (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Broadcasting...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <Send className="h-3 w-3" />
-                    Confirm Share
-                  </span>
-                )}
-              </button>
+          {/* Warning description */}
+          <p className="text-[11px] text-slate-500 leading-normal bg-slate-950/40 p-3 rounded-lg border border-slate-900">
+            💡 <b>Decentralized Security Note:</b> This operation records the access permissions on the blockchain. The shared user will download the encrypted document from IPFS and decrypt it client-side.
+          </p>
+
+          {/* Gas fee cost estimation */}
+          <div className="p-3.5 rounded-lg bg-slate-900/30 border border-slate-800/40 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-400 font-medium">
+              <Coins className="h-3.5 w-3.5 text-violet-400 animate-pulse" />
+              <span>Gas Estimation:</span>
             </div>
-          </form>
-        )}
+            <span className="font-mono text-slate-300 font-semibold">~{estimatedGas} ETH</span>
+          </div>
+
+          {/* Error notifications */}
+          {errorMessage && (
+            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs leading-normal">
+              ⚠️ {errorMessage}
+            </div>
+          )}
+
+          {/* Actions Footer */}
+          <div className="flex gap-3 border-t border-slate-900/60 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 glass-btn-secondary py-2.5 text-xs"
+              disabled={isProcessing}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="flex-1 glass-btn-primary py-2.5 text-xs font-bold shadow-lg shadow-violet-600/10 cursor-pointer"
+            >
+              {isProcessing ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Broadcasting...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Send className="h-3 w-3" />
+                  Confirm Share
+                </span>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Active Shares Section */}
+        <div className="mt-6 pt-5 border-t border-slate-900/60">
+          <h4 className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-cyan-400" />
+            <span>Active Shares ({viewers.length})</span>
+          </h4>
+          
+          {isLoadingViewers ? (
+            <div className="flex items-center justify-center py-6 text-slate-500 gap-2 text-xs">
+              <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+              <span>Loading authorized wallets...</span>
+            </div>
+          ) : viewers.length === 0 ? (
+            <div className="text-center py-6 bg-slate-950/30 border border-slate-900/40 rounded-xl text-slate-500 text-xs font-mono">
+              Not shared with any wallets yet.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+              {viewers.map((viewer) => (
+                <div key={viewer.recipientAddress} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/40 border border-slate-900 hover:border-slate-800 transition-all text-xs">
+                  <div className="font-mono text-slate-300 truncate max-w-[240px]" title={viewer.recipientAddress}>
+                    {viewer.recipientAddress.slice(0, 10)}...{viewer.recipientAddress.slice(-8)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRevoke(viewer.recipientAddress)}
+                    disabled={isProcessing}
+                    className="text-[10px] font-bold text-rose-400 hover:text-rose-350 hover:bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 hover:border-rose-500/40 cursor-pointer disabled:opacity-50 transition-all"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

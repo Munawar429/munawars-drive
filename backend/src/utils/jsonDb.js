@@ -95,6 +95,21 @@ class JsonCollection {
     this._save();
     return this.data[idx];
   }
+
+  async deleteOne(query = {}) {
+    const idx = this.data.findIndex(item => {
+      for (const key in query) {
+        if (query[key] !== item[key]) {
+          return false;
+        }
+      }
+      return true;
+    });
+    if (idx === -1) return { deletedCount: 0 };
+    this.data.splice(idx, 1);
+    this._save();
+    return { deletedCount: 1 };
+  }
 }
 
 // Instantiate collections
