@@ -63,7 +63,11 @@ class SharedKeyAdapter {
     };
 
     if (getDbMode()) {
-      return await MongoSharedKeyModel.create(data);
+      return await MongoSharedKeyModel.findOneAndUpdate(
+        { fileId: data.fileId, recipientAddress: data.recipientAddress },
+        data,
+        { upsert: true, new: true }
+      );
     } else {
       // Check if already exists in jsonDb, if so update it
       const existing = await jsonDb.sharedKeys.findOne({

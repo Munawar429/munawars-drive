@@ -15,9 +15,45 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS
+const allowedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      
+      // Allow localhost, 127.0.0.1, or any local IP addresses (192.168.x.x, 10.x.x.x, 172.x.x.x)
+      const isLocal = 
+        origin.startsWith("http://localhost:") || 
+        origin.startsWith("http://127.0.0.1:") || 
+        origin.startsWith("http://192.168.") || 
+        origin.startsWith("http://10.") || 
+        origin.startsWith("http://172.16.") || 
+        origin.startsWith("http://172.17.") || 
+        origin.startsWith("http://172.18.") || 
+        origin.startsWith("http://172.19.") || 
+        origin.startsWith("http://172.20.") || 
+        origin.startsWith("http://172.21.") || 
+        origin.startsWith("http://172.22.") || 
+        origin.startsWith("http://172.23.") || 
+        origin.startsWith("http://172.24.") || 
+        origin.startsWith("http://172.25.") || 
+        origin.startsWith("http://172.26.") || 
+        origin.startsWith("http://172.27.") || 
+        origin.startsWith("http://172.28.") || 
+        origin.startsWith("http://172.29.") || 
+        origin.startsWith("http://172.30.") || 
+        origin.startsWith("http://172.31.") || 
+        origin.endsWith(".local");
+      
+      if (isLocal || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Fallback/development allow-all
+      return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
