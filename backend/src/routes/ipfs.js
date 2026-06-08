@@ -7,13 +7,34 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { protect } from "../middleware/auth.js";
 import SharedKey from "../models/SharedKey.js";
+import { ethers } from "ethers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Set up Multer for memory storage (file buffer in memory)
+// Read Smart Contract details
+const configPath = path.join(__dirname, "../config/Web3Drive.json");
+let Web3DriveConfig = { address: "", abi: [] };
+if (fs.existsSync(configPath)) {
+  try {
+    Web3DriveConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch (e) {
+    console.error("⚠️ Failed to load Web3Drive config in Express:", e.message);
+  }
+}
+
+// Connect to local EVM Node provider
+const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+const provider = new ethers.JsonRpcProvider(rpcUrl);
+const contract = new ethers.Contract(
+  Web3DriveConfig.address || "0x0000000000000000000000000000000000000000",
+  Web3DriveConfig.abi || [],
+  provider
+);
+
+// Set up Multer for memory storage
 const upload = multer({
   limits: {
     fileSize: 100 * 1024 * 1024 // 100MB max file size
@@ -28,7 +49,7 @@ if (!fs.existsSync(mockIpfsDir)) {
 
 /**
  * @route POST /api/ipfs/upload
- * @desc Upload encrypted file to IPFS (with Pinata proxying) or mock fallback
+ * @desc Upload encrypted file to IPFS or mock fallback
  */
 router.post("/upload", protect, upload.single("file"), async (req, res) => {
   if (!req.file) {
@@ -40,19 +61,16 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
   const apiKey = process.env.PINATA_API_KEY;
   const apiSecret = process.env.PINATA_API_SECRET;
   const pinataJwt = process.env.PINATA_JWT;
-
   const hasPinataCreds = pinataJwt || (apiKey && apiSecret);
 
   if (hasPinataCreds) {
     try {
       console.log(`📤 Proxying upload of '${originalname}' (${size} bytes) to Pinata IPFS...`);
       
-      // Native Node FormData (available in modern Node)
       const formData = new FormData();
       const blob = new Blob([buffer], { type: mimetype });
       formData.append("file", blob, originalname);
 
-      // Metadata setting for Pinata
       const pinataMetadata = JSON.stringify({
         name: originalname,
         keyvalues: {
@@ -62,13 +80,11 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
       });
       formData.append("pinataMetadata", pinataMetadata);
 
-      // Pinata Options
       const pinataOptions = JSON.stringify({
         cidVersion: 0
       });
       formData.append("pinataOptions", pinataOptions);
 
-      // Construct headers
       const headers = {};
       if (pinataJwt) {
         headers["Authorization"] = `Bearer ${pinataJwt}`;
@@ -104,14 +120,11 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
 
   // FALLBACK: Local Mock IPFS Simulation
   try {
-    // Generate a cryptographic deterministic hash of file buffer to serve as mock CID
     const hash = crypto.createHash("sha256").update(buffer).digest("hex");
     const mockCid = `QmMock` + hash.substring(0, 40);
     const mockFilePath = path.join(mockIpfsDir, mockCid);
 
     console.log(`📂 Mock IPFS Mode: Saving file to local storage... CID: ${mockCid}`);
-    
-    // Save the encrypted buffer to disk
     fs.writeFileSync(mockFilePath, buffer);
 
     return res.json({
@@ -132,12 +145,52 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
  */
 router.get("/download/:cid", protect, async (req, res) => {
   const { cid } = req.params;
+  const user = req.user;
 
   if (!cid) {
     return res.status(400).json({ success: false, message: "IPFS CID is required" });
   }
 
-  // 1. Check if mock local file exists first
+  // 1. Enforce On-Chain Access Gate Check (Step 2 - Access Gate)
+  if (user && user.walletAddress) {
+    try {
+      // Check if the contract exists at the target address
+      const code = await provider.getCode(contract.target);
+      const isContractActive = code && code !== "0x" && code !== "0x0" && code !== "0x00";
+
+      if (isContractActive) {
+        // Hash the string CID into bytes32 to check on-chain permissions
+        const cidHash = ethers.solidityPackedKeccak256(["string"], [cid]);
+        console.log(`🔐 [AccessGate] Querying contract access for CID ${cid} (Hash: ${cidHash}), Wallet: ${user.walletAddress}`);
+        
+        const hasAccess = await contract.hasAccess(cidHash, user.walletAddress.toLowerCase());
+        if (!hasAccess) {
+          console.warn(`❌ [AccessGate] Unauthorized download attempt blocked for wallet: ${user.walletAddress}`);
+          return res.status(403).json({
+            success: false,
+            message: "Access Denied — This file is no longer accessible to you"
+          });
+        }
+        console.log(`✅ [AccessGate] Access authorized successfully for wallet: ${user.walletAddress}`);
+      } else {
+        console.warn("⚠️ [AccessGate] Web3Drive smart contract is not deployed on this network yet. Skipping check.");
+      }
+    } catch (contractErr) {
+      console.error("❌ [AccessGate] Error querying contract for access control validation:", contractErr.message);
+      return res.status(403).json({
+        success: false,
+        message: "Access Denied — Permissions checking failed"
+      });
+    }
+  } else {
+    console.warn("⚠️ [AccessGate] Missing wallet address in JWT authentication payload.");
+    return res.status(403).json({
+      success: false,
+      message: "Access Denied — Wallet address missing in session"
+    });
+  }
+
+  // 2. Fetch mock local file if it exists
   const mockFilePath = path.join(mockIpfsDir, cid);
   if (fs.existsSync(mockFilePath)) {
     console.log(`📥 Serving file '${cid}' from mock local storage...`);
@@ -146,7 +199,7 @@ router.get("/download/:cid", protect, async (req, res) => {
     return res.send(fileBuffer);
   }
 
-  // 2. Fetch from real IPFS gateway (via secure redirect or pipe stream)
+  // 3. Fetch from real IPFS gateway (via secure redirect or pipe stream)
   const gateways = [
     `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
@@ -199,46 +252,23 @@ router.post("/share-key", protect, async (req, res) => {
 });
 
 /**
- * @route GET /api/ipfs/share-key/:fileId
- * @desc Fetch the encrypted file key mapped to the authenticated user for a shared file
+ * @route GET /api/ipfs/shares
+ * @desc Retrieve all shared records database entries for the Shared Access Management panel
  */
-router.get("/share-key/:fileId", protect, async (req, res) => {
-  const { fileId } = req.params;
-  const user = req.user;
-
+router.get("/shares", protect, async (req, res) => {
   try {
-    // 1. Try to find by walletAddress
-    let sharedRecord = null;
-    if (user.walletAddress) {
-      sharedRecord = await SharedKey.findOne({
-        fileId,
-        recipientAddress: user.walletAddress
-      });
-    }
-
-    // 2. Fallback to search by email if walletAddress record is not found
-    if (!sharedRecord && user.email) {
-      sharedRecord = await SharedKey.findOne({
-        fileId,
-        recipientAddress: user.email
-      });
-    }
-
-    if (!sharedRecord) {
-      return res.status(404).json({
-        success: false,
-        message: "No shared decryption key found for this user and file."
-      });
-    }
-
+    const shares = await SharedKey.find();
     return res.json({
       success: true,
-      fileId,
-      encryptedKey: sharedRecord.encryptedKey
+      shares: shares.map(s => ({
+        fileId: s.fileId,
+        recipientAddress: s.recipientAddress,
+        timestamp: s.timestamp || s.createdAt
+      }))
     });
   } catch (error) {
-    console.error("Get shared key error:", error.message);
-    return res.status(500).json({ success: false, message: "Server error retrieving shared key" });
+    console.error("Get all shares error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error retrieving shares ledger" });
   }
 });
 
@@ -262,6 +292,48 @@ router.get("/shares/:fileId", protect, async (req, res) => {
   } catch (error) {
     console.error("Get file shares error:", error.message);
     return res.status(500).json({ success: false, message: "Server error retrieving shares" });
+  }
+});
+
+/**
+ * @route GET /api/ipfs/share-key/:fileId
+ * @desc Fetch the encrypted file key mapped to the authenticated user for a shared file
+ */
+router.get("/share-key/:fileId", protect, async (req, res) => {
+  const { fileId } = req.params;
+  const user = req.user;
+
+  try {
+    let sharedRecord = null;
+    if (user.walletAddress) {
+      sharedRecord = await SharedKey.findOne({
+        fileId,
+        recipientAddress: user.walletAddress
+      });
+    }
+
+    if (!sharedRecord && user.email) {
+      sharedRecord = await SharedKey.findOne({
+        fileId,
+        recipientAddress: user.email
+      });
+    }
+
+    if (!sharedRecord) {
+      return res.status(404).json({
+        success: false,
+        message: "No shared decryption key found for this user and file."
+      });
+    }
+
+    return res.json({
+      success: true,
+      fileId,
+      encryptedKey: sharedRecord.encryptedKey
+    });
+  } catch (error) {
+    console.error("Get shared key error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error retrieving shared key" });
   }
 });
 

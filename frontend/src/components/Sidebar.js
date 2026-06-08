@@ -9,7 +9,8 @@ import {
   Activity, 
   LogOut, 
   Wallet,
-  HardDrive
+  HardDrive,
+  Users
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { formatAddress } from "../utils/helpers.js";
@@ -20,6 +21,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
     { id: "drive", label: "My Drive", icon: HardDrive },
     { id: "shared", label: "Shared with Me", icon: Share2 },
+    { id: "shares-list", label: "Shared Access", icon: Users },
     { id: "verify", label: "Integrity Checker", icon: ShieldCheck },
     { id: "vault", label: "Secure Key Vault", icon: KeyRound },
     { id: "logs", label: "Activity Audit Logs", icon: Activity },

@@ -61,7 +61,6 @@ export const Web3Provider = ({ children }) => {
     setError(null);
 
     try {
-      // Request accounts
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
@@ -80,7 +79,6 @@ export const Web3Provider = ({ children }) => {
             method: "wallet_switchEthereumChain",
             params: [{ chainId: targetChainIdHex }],
           });
-          // Re-fetch network details after switch
           network = await browserProvider.getNetwork();
         } catch (switchError) {
           if (switchError.code === 4902) {
@@ -185,7 +183,6 @@ export const Web3Provider = ({ children }) => {
     };
 
     const handleChainChanged = () => {
-      // Next.js standard Web3 practice: reload page on chain change to avoid cache mismatch
       window.location.reload();
     };
 
@@ -216,7 +213,7 @@ export const Web3Provider = ({ children }) => {
   }, [connectWallet]);
 
   /**
-   * Estimates GAS FFM cost in Ethers for any contract interaction
+   * Estimates GAS FFM cost in Ethers for contract interaction
    */
   const estimateGasFees = async (methodName, ...args) => {
     if (!contract || !provider) return "0.00";
@@ -228,16 +225,20 @@ export const Web3Provider = ({ children }) => {
       const gasEstimate = await contract[methodName].estimateGas(...args);
       const feeData = await provider.getFeeData();
       
-      // Calculate Gas Fee: gasEstimate * maxFeePerGas (or gasPrice)
       const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || ethers.parseUnits("1", "gwei");
       const totalCostWei = gasEstimate * gasPrice;
       
       return ethers.formatEther(totalCostWei);
     } catch (e) {
       console.warn(`Gas estimation failed for method ${methodName}:`, e);
-      return "0.0005"; // reasonable local node fallback estimation
+      return "0.0005";
     }
   };
+
+  // Helper to get bytes32 hash of a CID string
+  const getCidHash = useCallback((ipfsHash) => {
+    return ethers.solidityPackedKeccak256(["string"], [ipfsHash]);
+  }, []);
 
   // 1. Upload File metadata on-chain
   const uploadFileOnChain = async (ipfsHash, fileName, fileType, fileSize, encryptedKey, fileHash, isPublic) => {
@@ -253,9 +254,7 @@ export const Web3Provider = ({ children }) => {
         fileHash,
         isPublic
       );
-      console.log("Transaction dispatched:", tx.hash);
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
       setTxPending(false);
       return receipt;
     } catch (e) {
@@ -264,7 +263,7 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // 2. Share access with a wallet address
+  // 2. Share access with a wallet address (legacy/fallback wrapper)
   const shareFileOnChain = async (fileId, targetAddress) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
@@ -279,12 +278,14 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // 3. Revoke access from a wallet address
-  const revokeAccessOnChain = async (fileId, targetAddress) => {
+  // 3. Grant Access using bytes32 CID Hash (New Flow)
+  const grantAccessOnChain = async (ipfsHash, recipientAddress) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const tx = await contract.revokeAccess(fileId, targetAddress);
+      const cidHash = getCidHash(ipfsHash);
+      console.log(`⛓️ [Web3] Granting access for CID ${ipfsHash} (Hash: ${cidHash}) to recipient ${recipientAddress}`);
+      const tx = await contract.grantAccess(cidHash, recipientAddress);
       const receipt = await tx.wait();
       setTxPending(false);
       return receipt;
@@ -294,7 +295,26 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // 4. Toggle file visibility
+  // 4. Revoke Access using bytes32 CID Hash (Works for owner revoke & self-revoke)
+  const revokeAccessOnChain = async (ipfsHash, recipientAddress) => {
+    if (!contract) throw new Error("Smart contract not instantiated");
+    setTxPending(true);
+    try {
+      const cidHash = getCidHash(ipfsHash);
+      console.log(`⛓️ [Web3] Revoking access for CID ${ipfsHash} (Hash: ${cidHash}), Recipient: ${recipientAddress}`);
+      
+      // Request explicit signature match for the overloaded bytes32 method signature
+      const tx = await contract.getFunction("revokeAccess(bytes32,address)")(cidHash, recipientAddress);
+      const receipt = await tx.wait();
+      setTxPending(false);
+      return receipt;
+    } catch (e) {
+      setTxPending(false);
+      throw e;
+    }
+  };
+
+  // 5. Toggle file visibility
   const toggleVisibilityOnChain = async (fileId, isPublic) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
@@ -309,7 +329,7 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // 5. Mark file as deleted on-chain
+  // 6. Mark file as deleted on-chain
   const deleteFileOnChain = async (fileId) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
@@ -324,13 +344,13 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // 6. Fetch owned files
+  // 7. Fetch owned files
   const getMyFilesFromChain = async () => {
     if (!contract || !provider) return [];
     try {
       const code = await provider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
-        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${contractAddress} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
+        console.warn("⚠️ Smart contract is not active on this network.");
         return [];
       }
       const rawFiles = await contract.getMyFiles();
@@ -348,18 +368,17 @@ export const Web3Provider = ({ children }) => {
         isDeleted: f.isDeleted
       }));
     } catch (e) {
-      console.error("Error fetching files from blockchain (caught BAD_DATA or general error):", e);
+      console.error("Error fetching files from blockchain:", e);
       return [];
     }
   };
 
-  // 7. Fetch shared files
+  // 8. Fetch shared files
   const getSharedFilesFromChain = async () => {
     if (!contract || !provider) return [];
     try {
       const code = await provider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
-        console.warn(`⚠️ [web3Drive] Contract not deployed! Target Address: ${contractAddress} has no bytecode on active network: '${networkName || 'Unknown'}' (Chain ID: ${chainId || 'Unknown'}). Please run 'npx hardhat run scripts/deploy.js --network localhost' to deploy the contract on your local node, and switch MetaMask to Localhost 8545.`);
         return [];
       }
       const rawFiles = await contract.getSharedWithMe();
@@ -377,12 +396,12 @@ export const Web3Provider = ({ children }) => {
         isDeleted: f.isDeleted
       }));
     } catch (e) {
-      console.error("Error fetching shared files from blockchain (caught BAD_DATA or general error):", e);
+      console.error("Error fetching shared files from blockchain:", e);
       return [];
     }
   };
 
-  // 8. Verify File Integrity
+  // 9. Verify File Integrity
   const verifyFileIntegrityOnChain = async (fileId, challengeHash) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     try {
@@ -410,7 +429,9 @@ export const Web3Provider = ({ children }) => {
         estimateGasFees,
         uploadFileOnChain,
         shareFileOnChain,
+        grantAccessOnChain,
         revokeAccessOnChain,
+        getCidHash,
         toggleVisibilityOnChain,
         deleteFileOnChain,
         getMyFilesFromChain,

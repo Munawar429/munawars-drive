@@ -30,8 +30,14 @@ contract Web3Drive {
     // Files shared with a specific user (on-chain indexing)
     mapping(address => uint256[]) private sharedFiles;
     
-    // Access control mapping: fileId => user => hasAccess
-    mapping(uint256 => mapping(address => bool)) private fileAccess;
+    // Access control mapping: cidHash => user => hasAccess
+    mapping(bytes32 => mapping(address => bool)) public fileAccess;
+
+    // Mapping to track owner of bytes32 fileId/CID hash
+    mapping(bytes32 => address) public fileOwners;
+
+    // Mapping from bytes32 CID hash to uint256 fileCount ID
+    mapping(bytes32 => uint256) public cidHashToId;
 
     // Events
     event FileUploaded(
@@ -65,6 +71,17 @@ contract Web3Drive {
         address indexed owner
     );
 
+    event AccessGranted(
+        bytes32 indexed fileId,
+        address indexed recipient
+    );
+
+    event AccessRevoked(
+        bytes32 indexed fileId,
+        address indexed recipient,
+        address indexed revokedBy
+    );
+
     // Modifiers
     modifier onlyOwner(uint256 _fileId) {
         require(files[_fileId].owner == msg.sender, "Web3Drive: Caller is not the file owner");
@@ -72,12 +89,13 @@ contract Web3Drive {
         _;
     }
 
-    modifier hasAccess(uint256 _fileId) {
+    modifier onlyAuthorized(uint256 _fileId) {
         require(!files[_fileId].isDeleted, "Web3Drive: File has been deleted");
+        bytes32 cidHash = keccak256(abi.encodePacked(files[_fileId].ipfsHash));
         require(
             files[_fileId].owner == msg.sender || 
             files[_fileId].isPublic || 
-            fileAccess[_fileId][msg.sender],
+            fileAccess[cidHash][msg.sender],
             "Web3Drive: Access denied"
         );
         _;
@@ -123,6 +141,9 @@ contract Web3Drive {
         
         userFiles[msg.sender].push(fileCount);
         
+        fileOwners[keccak256(abi.encodePacked(_ipfsHash))] = msg.sender;
+        cidHashToId[keccak256(abi.encodePacked(_ipfsHash))] = fileCount;
+
         emit FileUploaded(fileCount, _ipfsHash, _fileName, msg.sender, block.timestamp);
         
         return fileCount;
@@ -136,12 +157,15 @@ contract Web3Drive {
     function shareFile(uint256 _fileId, address _userToShare) external onlyOwner(_fileId) {
         require(_userToShare != address(0), "Web3Drive: Invalid share address");
         require(_userToShare != msg.sender, "Web3Drive: Cannot share with yourself");
-        require(!fileAccess[_fileId][_userToShare], "Web3Drive: Already shared with this user");
         
-        fileAccess[_fileId][_userToShare] = true;
+        bytes32 cidHash = keccak256(abi.encodePacked(files[_fileId].ipfsHash));
+        require(!fileAccess[cidHash][_userToShare], "Web3Drive: Already shared with this user");
+        
+        fileAccess[cidHash][_userToShare] = true;
         sharedFiles[_userToShare].push(_fileId);
         
         emit FileShared(_fileId, msg.sender, _userToShare);
+        emit AccessGranted(cidHash, _userToShare);
     }
 
     /**
@@ -150,9 +174,10 @@ contract Web3Drive {
      * @param _userToRevoke The wallet address to revoke.
      */
     function revokeAccess(uint256 _fileId, address _userToRevoke) external onlyOwner(_fileId) {
-        require(fileAccess[_fileId][_userToRevoke], "Web3Drive: Not shared with this user");
+        bytes32 cidHash = keccak256(abi.encodePacked(files[_fileId].ipfsHash));
+        require(fileAccess[cidHash][_userToRevoke], "Web3Drive: Not shared with this user");
         
-        fileAccess[_fileId][_userToRevoke] = false;
+        fileAccess[cidHash][_userToRevoke] = false;
         
         // Remove from the shared files array of the revoked user
         uint256[] storage sFiles = sharedFiles[_userToRevoke];
@@ -166,6 +191,75 @@ contract Web3Drive {
         }
         
         emit AccessRevoked(_fileId, msg.sender, _userToRevoke);
+        emit AccessRevoked(cidHash, _userToRevoke, msg.sender);
+    }
+
+    /**
+     * @notice Grants access to a file using the bytes32 CID hash.
+     * @param _fileId The bytes32 hash of the IPFS CID.
+     * @param _recipient The wallet address to grant access.
+     */
+    function grantAccess(bytes32 _fileId, address _recipient) external {
+        require(fileOwners[_fileId] == msg.sender, "Web3Drive: Only owner can grant access");
+        require(_recipient != address(0), "Web3Drive: Invalid share address");
+        require(_recipient != msg.sender, "Web3Drive: Cannot share with yourself");
+        require(!fileAccess[_fileId][_recipient], "Web3Drive: Already shared with this user");
+
+        fileAccess[_fileId][_recipient] = true;
+        
+        uint256 legacyId = cidHashToId[_fileId];
+        if (legacyId > 0) {
+            sharedFiles[_recipient].push(legacyId);
+        }
+
+        emit AccessGranted(_fileId, _recipient);
+    }
+
+    /**
+     * @notice Revokes access to a file using the bytes32 CID hash.
+     * @param _fileId The bytes32 hash of the IPFS CID.
+     * @param _recipient The wallet address to revoke access.
+     */
+    function revokeAccess(bytes32 _fileId, address _recipient) external {
+        require(
+            fileOwners[_fileId] == msg.sender || msg.sender == _recipient,
+            "Web3Drive: Not authorized to revoke access"
+        );
+        require(fileAccess[_fileId][_recipient], "Web3Drive: Access not granted to this recipient");
+
+        fileAccess[_fileId][_recipient] = false;
+
+        uint256 legacyId = cidHashToId[_fileId];
+        if (legacyId > 0) {
+            uint256[] storage sFiles = sharedFiles[_recipient];
+            for (uint256 i = 0; i < sFiles.length; i++) {
+                if (sFiles[i] == legacyId) {
+                    sFiles[i] = sFiles[sFiles.length - 1];
+                    sFiles.pop();
+                    break;
+                }
+            }
+        }
+
+        emit AccessRevoked(_fileId, _recipient, msg.sender);
+    }
+
+    /**
+     * @notice View function to check if a user has access to a file.
+     * @param _fileId The bytes32 hash of the IPFS CID.
+     * @param _user The wallet address to check.
+     */
+    function hasAccess(bytes32 _fileId, address _user) external view returns (bool) {
+        uint256 legacyId = cidHashToId[_fileId];
+        if (legacyId == 0) return false;
+        FileMetadata memory file = files[legacyId];
+        if (file.isDeleted) return false;
+        
+        return (
+            file.owner == _user || 
+            file.isPublic || 
+            fileAccess[_fileId][_user]
+        );
     }
 
     /**
@@ -191,7 +285,7 @@ contract Web3Drive {
      * @notice Retrieves file metadata details.
      * @param _fileId The ID of the file.
      */
-    function getFile(uint256 _fileId) external view hasAccess(_fileId) returns (FileMetadata memory) {
+    function getFile(uint256 _fileId) external view onlyAuthorized(_fileId) returns (FileMetadata memory) {
         return files[_fileId];
     }
 
@@ -253,7 +347,8 @@ contract Web3Drive {
         uint256 activeCount = 0;
         for (uint256 i = 0; i < sharedIds.length; i++) {
             uint256 fid = sharedIds[i];
-            if (!files[fid].isDeleted && fileAccess[fid][msg.sender]) {
+            bytes32 cidHash = keccak256(abi.encodePacked(files[fid].ipfsHash));
+            if (!files[fid].isDeleted && fileAccess[cidHash][msg.sender]) {
                 activeCount++;
             }
         }
@@ -262,7 +357,8 @@ contract Web3Drive {
         uint256 index = 0;
         for (uint256 i = 0; i < sharedIds.length; i++) {
             uint256 fid = sharedIds[i];
-            if (!files[fid].isDeleted && fileAccess[fid][msg.sender]) {
+            bytes32 cidHash = keccak256(abi.encodePacked(files[fid].ipfsHash));
+            if (!files[fid].isDeleted && fileAccess[cidHash][msg.sender]) {
                 activeSharedFiles[index] = files[fid];
                 index++;
             }
@@ -280,10 +376,11 @@ contract Web3Drive {
         if (files[_fileId].isDeleted) {
             return false;
         }
+        bytes32 cidHash = keccak256(abi.encodePacked(files[_fileId].ipfsHash));
         return (
             files[_fileId].owner == _user || 
             files[_fileId].isPublic || 
-            fileAccess[_fileId][_user]
+            fileAccess[cidHash][_user]
         );
     }
 }

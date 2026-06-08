@@ -110,6 +110,8 @@ export default function Navbar({ activeTab }) {
         return "Personal Drive";
       case "shared":
         return "Shared Workspace";
+      case "shares-list":
+        return "Shared Access Management";
       case "verify":
         return "Integrity Verification Vault";
       case "vault":

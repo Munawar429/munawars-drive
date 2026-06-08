@@ -80,6 +80,10 @@ export default function Home() {
   const [activityLogs, setActivityLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // Outbound Shares State
+  const [allShares, setAllShares] = useState([]);
+  const [loadingShares, setLoadingShares] = useState(false);
+
   const { 
     isAuthenticated, 
     user, 
@@ -97,7 +101,8 @@ export default function Home() {
     networkName,
     getMyFilesFromChain, 
     getSharedFilesFromChain, 
-    verifyFileIntegrityOnChain 
+    verifyFileIntegrityOnChain,
+    revokeAccessOnChain
   } = useWeb3();
 
   // Avoid Hydration SSR mismatches
@@ -125,6 +130,22 @@ export default function Home() {
     setLoadingFiles(false);
   };
 
+  // Fetch Outbound Shares
+  const fetchSharesData = async () => {
+    if (!isAuthenticated) return;
+    setLoadingShares(true);
+    try {
+      console.log("📡 Fetching outbound shares from database...");
+      const res = await axios.get(`${API_URL}/ipfs/shares`);
+      if (res.data && res.data.shares) {
+        setAllShares(res.data.shares);
+      }
+    } catch (e) {
+      console.error("Failed to load shares data:", e);
+    }
+    setLoadingShares(false);
+  };
+
   // Fetch Activity Logs
   const fetchActivityLogs = async () => {
     if (!isAuthenticated) return;
@@ -143,12 +164,14 @@ export default function Home() {
     console.log("🔄 Refreshing dashboard state immediately...");
     fetchDashboardData();
     fetchActivityLogs();
+    fetchSharesData();
     
     // Re-fetch 1.5s later to account for blockchain block mining lag
     setTimeout(() => {
       console.log("🔄 Running post-mining dashboard sync...");
       fetchDashboardData();
       fetchActivityLogs();
+      fetchSharesData();
     }, 1500);
   };
 
@@ -157,6 +180,8 @@ export default function Home() {
     if (isAuthenticated) {
       if (activeTab === "drive" || activeTab === "shared") {
         fetchDashboardData();
+      } else if (activeTab === "shares-list") {
+        fetchSharesData();
       } else if (activeTab === "logs") {
         fetchActivityLogs();
       }
@@ -168,8 +193,41 @@ export default function Home() {
     if (isAuthenticated) {
       fetchDashboardData();
       fetchActivityLogs();
+      fetchSharesData();
     }
   }, [isAuthenticated, isConnected]);
+
+  // Handle outbound share revocation
+  const handleRevokeShare = async (fileId, recipientAddress, ipfsHash, fileName, fileSize) => {
+    if (!confirm(`Are you sure you want to revoke access to '${fileName}' for recipient ${recipientAddress}?`)) return;
+    
+    setLoadingShares(true);
+    try {
+      console.log(`⛓️ Revoking access to file ${fileName} (CID: ${ipfsHash}) for recipient ${recipientAddress}...`);
+      
+      // 1. Call on-chain revokeAccessOnChain (using useWeb3's hook)
+      await revokeAccessOnChain(ipfsHash, recipientAddress);
+      
+      // 2. Call backend DELETE /api/ipfs/share-key/:fileId/:recipientAddress
+      console.log(`📡 Removing key record from database...`);
+      await axios.delete(`${API_URL}/ipfs/share-key/${fileId}/${recipientAddress}`);
+      
+      // 3. Log security activity
+      logActivity(
+        "REVOKE_ACCESS",
+        `Revoked access to file ${fileName} from wallet: ${recipientAddress}`,
+        fileName,
+        Number(fileSize)
+      );
+      
+      alert("Access successfully revoked!");
+      refreshDashboard();
+    } catch (e) {
+      console.error("Failed to revoke access:", e);
+      alert(`Revocation failed: ${e.message || e}`);
+    }
+    setLoadingShares(false);
+  };
 
   if (!mounted) return null;
 
@@ -839,6 +897,101 @@ export default function Home() {
                   <p className="text-sm font-semibold text-slate-400">No shared documents</p>
                   <p className="text-xs text-slate-500 mt-1">
                     Files shared with your wallet address by other users will appear here.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SHARED ACCESS MANAGEMENT TAB */}
+          {activeTab === "shares-list" && (
+            <div className="space-y-6">
+              <div className="p-4 rounded-xl bg-slate-900/25 border border-slate-800/40 text-xs text-slate-400">
+                👥 <b>Outbound Shares Control Panel:</b> View all wallets you have shared access with. You can revoke access from any previously shared recipient here.
+              </div>
+
+              {loadingShares ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 shimmer rounded-lg" />
+                  ))}
+                </div>
+              ) : allShares.length > 0 ? (
+                <div className="glass-panel rounded-xl overflow-hidden border border-slate-800/80">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-950/80 border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-4">File Name</th>
+                        <th className="p-4">Shared With</th>
+                        <th className="p-4">Date Shared</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const fileMap = {};
+                        files.forEach(f => {
+                          fileMap[String(f.id)] = f;
+                        });
+
+                        const myOutboundShares = allShares.filter(s => fileMap[String(s.fileId)]);
+
+                        if (myOutboundShares.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="5" className="p-8 text-center text-slate-500 font-mono">
+                                No outbound shares found for your owned files.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return myOutboundShares.map((share, idx) => {
+                          const file = fileMap[String(share.fileId)];
+                          return (
+                            <tr key={idx} className="border-b border-slate-900/60 hover:bg-slate-900/10 transition-all">
+                              <td className="p-4 font-bold text-slate-200 truncate max-w-xs">
+                                {file ? file.fileName : `File ID: ${share.fileId}`}
+                              </td>
+                              <td className="p-4 font-mono text-slate-350 select-all">
+                                {share.recipientAddress}
+                              </td>
+                              <td className="p-4 text-slate-500">
+                                {formatDate(share.timestamp)}
+                              </td>
+                              <td className="p-4">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400">
+                                  Authorized
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={() => handleRevokeShare(
+                                    share.fileId,
+                                    share.recipientAddress,
+                                    file ? file.ipfsHash : "",
+                                    file ? file.fileName : `ID:${share.fileId}`,
+                                    file ? file.fileSize : 0
+                                  )}
+                                  className="text-[10px] font-bold text-rose-400 hover:text-rose-350 hover:bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 hover:border-rose-500/40 cursor-pointer transition-all disabled:opacity-50"
+                                >
+                                  Revoke Share
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-16 border border-slate-900 rounded-xl bg-slate-950/30">
+                  <Share2 className="h-10 w-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-400">No outbound shares</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Files you share with other wallets will appear here.
                   </p>
                 </div>
               )}

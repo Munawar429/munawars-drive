@@ -126,8 +126,8 @@ describe("Web3Drive Smart Contract", function () {
       // Verify user1 has access
       expect(await web3Drive.checkAccess(1, user1.address)).to.be.true;
 
-      await expect(web3Drive.revokeAccess(1, user1.address))
-        .to.emit(web3Drive, "AccessRevoked")
+      await expect(web3Drive.getFunction("revokeAccess(uint256,address)")(1, user1.address))
+        .to.emit(web3Drive, "AccessRevoked(uint256,address,address)")
         .withArgs(1, owner.address, user1.address);
 
       // Access denied again
@@ -215,6 +215,55 @@ describe("Web3Drive Smart Contract", function () {
       expect(user1Shared.length).to.equal(1);
       expect(user1Shared[0].id).to.equal(1);
       expect(user1Shared[0].fileName).to.equal("doc1.txt");
+    });
+  });
+
+  describe("Bytes32 Access Controls & Revocation", function () {
+    const ipfsHash = "QmTestHash12345";
+    let fileIdBytes32;
+
+    beforeEach(async function () {
+      await web3Drive.uploadFile(
+        ipfsHash,
+        "shared-access.txt",
+        "text/plain",
+        500,
+        "aes-key",
+        "sha-hash",
+        false
+      );
+      fileIdBytes32 = ethers.solidityPackedKeccak256(["string"], [ipfsHash]);
+    });
+
+    it("Should grant access using bytes32 CID hash", async function () {
+      await expect(web3Drive.grantAccess(fileIdBytes32, user1.address))
+        .to.emit(web3Drive, "AccessGranted")
+        .withArgs(fileIdBytes32, user1.address);
+
+      expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.true;
+    });
+
+    it("Should allow owner to revoke bytes32 access", async function () {
+      await web3Drive.grantAccess(fileIdBytes32, user1.address);
+      expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.true;
+
+      await expect(web3Drive.getFunction("revokeAccess(bytes32,address)")(fileIdBytes32, user1.address))
+        .to.emit(web3Drive, "AccessRevoked(bytes32,address,address)")
+        .withArgs(fileIdBytes32, user1.address, owner.address);
+
+      expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.false;
+    });
+
+    it("Should allow recipient to voluntarily surrender (self-revoke) access", async function () {
+      await web3Drive.grantAccess(fileIdBytes32, user1.address);
+      expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.true;
+
+      // Connect as user1 (recipient) and revoke own access
+      await expect(web3Drive.connect(user1).getFunction("revokeAccess(bytes32,address)")(fileIdBytes32, user1.address))
+        .to.emit(web3Drive, "AccessRevoked(bytes32,address,address)")
+        .withArgs(fileIdBytes32, user1.address, user1.address);
+
+      expect(await web3Drive.hasAccess(fileIdBytes32, user1.address)).to.be.false;
     });
   });
 });
