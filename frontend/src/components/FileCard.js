@@ -406,9 +406,9 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       </div>
 
       {/* Upgraded Footer Actions Section */}
-      <div className="relative mt-4 h-12 flex items-center justify-between overflow-hidden">
-        {/* Default View (Truncated IPFS CID & Sepolia Network Badge) */}
-        <div className="absolute inset-0 flex items-center justify-between transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-4 pointer-events-auto group-hover:pointer-events-none">
+      <div className="relative mt-4 h-12 flex items-center justify-between">
+        {/* Default View (Truncated IPFS CID & Sepolia Network Badge) - Always Visible */}
+        <div className="absolute inset-0 flex items-center justify-between transition-all duration-300 pointer-events-auto">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -428,8 +428,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           </span>
         </div>
 
-        {/* Hover View Actions (Revealed ONLY on card hover) */}
-        <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 translate-y-4 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300">
+        {/* Hover View Actions (Reveals directly above the copy bar on card hover) */}
+        <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 translate-y-4 pointer-events-none group-hover:opacity-100 group-hover:-translate-y-12 group-hover:pointer-events-auto transition-all duration-300">
           {/* Decrypt & Preview Button */}
           {["Image", "Document", "Code"].includes(category) && (
             <button
