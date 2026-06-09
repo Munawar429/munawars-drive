@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { formatBytes, formatDate, getFileTypeMetadata, formatAddress } from "../utils/helpers.js";
+import { formatBytes, formatDate, formatAddress } from "../utils/helpers.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { decryptFileClientSide, decryptFileKeyWithRSA } from "../utils/crypto.js";
@@ -14,12 +14,83 @@ import {
   Lock, 
   Globe, 
   Eye, 
-  ShieldAlert,
   Loader2,
   ExternalLink,
-  ChevronDown,
-  LogOut
+  LogOut,
+  Image as ImageIcon,
+  Video,
+  FileText,
+  Archive,
+  File
 } from "lucide-react";
+
+// Helper to resolve files, icons, gradients, glows, and badges based on file extension & MIME type
+const getFileTypeStyle = (name, type) => {
+  const mime = type ? type.toLowerCase() : "";
+  const ext = name ? name.split(".").pop().toLowerCase() : "";
+
+  // 1. Images
+  if (mime.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
+    return {
+      icon: ImageIcon,
+      gradient: "from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400 shadow-emerald-500/5",
+      glow: "hover:shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:border-emerald-500/40",
+      badgeBg: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+      previewable: true
+    };
+  }
+  // 2. Videos
+  if (mime.startsWith("video/") || ["mp4", "mkv", "avi", "mov", "webm"].includes(ext)) {
+    return {
+      icon: Video,
+      gradient: "from-purple-500/20 to-indigo-500/10 border-purple-500/30 text-purple-400 shadow-purple-500/5",
+      glow: "hover:shadow-[0_0_25px_rgba(168,85,247,0.25)] hover:border-purple-500/40",
+      badgeBg: "bg-purple-500/10 border-purple-500/30 text-purple-400",
+      previewable: true
+    };
+  }
+  // 3. PDFs (Explicit style)
+  if (mime === "application/pdf" || ext === "pdf") {
+    return {
+      icon: FileText,
+      gradient: "from-red-500/20 to-rose-500/10 border-red-500/30 text-red-400 shadow-red-500/5",
+      glow: "hover:shadow-[0_0_25px_rgba(239,68,68,0.25)] hover:border-red-500/40",
+      badgeBg: "bg-red-500/10 border-red-500/30 text-red-400",
+      previewable: true
+    };
+  }
+  // 4. Documents & General Text
+  if (
+    mime.startsWith("text/") || 
+    ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt"].includes(ext)
+  ) {
+    return {
+      icon: FileText,
+      gradient: "from-blue-500/20 to-cyan-500/10 border-blue-500/30 text-blue-400 shadow-blue-500/5",
+      glow: "hover:shadow-[0_0_25px_rgba(59,130,246,0.25)] hover:border-blue-500/40",
+      badgeBg: "bg-blue-500/10 border-blue-500/30 text-blue-400",
+      previewable: true
+    };
+  }
+  // 5. Archives
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
+    return {
+      icon: Archive,
+      gradient: "from-orange-500/20 to-amber-500/10 border-orange-500/30 text-orange-400 shadow-orange-500/5",
+      glow: "hover:shadow-[0_0_25px_rgba(249,115,22,0.25)] hover:border-orange-500/40",
+      badgeBg: "bg-orange-500/10 border-orange-500/30 text-orange-400",
+      previewable: false
+    };
+  }
+  // 6. Default Fallback
+  return {
+    icon: File,
+    gradient: "from-slate-500/20 to-slate-600/10 border-slate-500/30 text-slate-400 shadow-slate-500/5",
+    glow: "hover:shadow-[0_0_25px_rgba(6,182,212,0.25)] hover:border-cyan-500/40",
+    badgeBg: "bg-slate-500/10 border-slate-500/30 text-slate-400",
+    previewable: false
+  };
+};
 
 export default function FileCard({ file, isSharedView = false, onActionSuccess, onShare, onPreview }) {
   const { 
@@ -37,6 +108,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState("");
+  const [downloadPercent, setDownloadPercent] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const { logActivity, masterSeed } = useAuth();
   const { 
@@ -46,8 +119,12 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
     walletAddress 
   } = useWeb3();
 
+  // Correcting Unix timestamp bug (seconds to milliseconds check)
+  const correctedTimestamp = Number(timestamp) < 9999999999 ? Number(timestamp) * 1000 : Number(timestamp);
+
   // 1. Decrypted Download Flow
   const handleDownload = async () => {
+    setDownloadPercent(0);
     setDownloadProgress("Fetching IPFS...");
     setIsProcessing(true);
     try {
@@ -56,12 +133,18 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       const response = await axios.get(`${API_URL}/ipfs/download/${ipfsHash}`, {
         responseType: "arraybuffer",
         onDownloadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setDownloadProgress(`Fetching: ${percentCompleted}%`);
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setDownloadPercent(percentCompleted);
+            setDownloadProgress(`Fetching: ${percentCompleted}%`);
+          } else {
+            setDownloadProgress("Fetching...");
+          }
         }
       });
 
       setDownloadProgress("Decrypting locally...");
+      setDownloadPercent(100);
       const encryptedBuffer = response.data;
       let plaintextBuffer;
 
@@ -107,6 +190,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       link.click();
       document.body.removeChild(link);
       setDownloadProgress("");
+      setDownloadPercent(0);
 
       await logActivity(
         "FILE_DOWNLOAD",
@@ -118,6 +202,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       console.error("Download/Decryption Error:", e);
       alert(`Download Failed: ${e.message}`);
       setDownloadProgress("");
+      setDownloadPercent(0);
       
       await logActivity(
         "DOWNLOAD_FAILED",
@@ -269,87 +354,140 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
     setIsProcessing(false);
   };
 
-  const fileMeta = getFileTypeMetadata(fileName, fileType);
-  const FileIcon = fileMeta.icon;
+  // 6. Copy CID to Clipboard
+  const handleCopyCID = (e) => {
+    e.stopPropagation();
+    if (!ipfsHash) return;
+    navigator.clipboard.writeText(ipfsHash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Resolve visual styling variables
+  const fileStyle = getFileTypeStyle(fileName, fileType);
+  const FileIcon = fileStyle.icon;
+  const ext = fileName ? fileName.split(".").pop().toUpperCase() : "FILE";
+
+  const getDownloadButtonText = () => {
+    if (isProcessing) {
+      if (downloadProgress.includes("Fetching") && downloadPercent > 0) {
+        return `${downloadPercent}%`;
+      }
+      if (downloadProgress.includes("Decrypting")) {
+        return "Decrypting...";
+      }
+      if (downloadProgress.includes("Assembling")) {
+        return "Saving...";
+      }
+      return "Processing...";
+    }
+    return "Download";
+  };
 
   return (
-    <div className="relative group flex flex-col justify-between h-72 rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] hover:border-cyan-500/35 select-none">
+    <div className={`relative group flex flex-col justify-between min-h-[20rem] h-auto rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-6 transition-all duration-300 ${fileStyle.glow} select-none overflow-hidden`}>
+      
       {/* Floating Badges */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5">
-        <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+        <span className="text-[10px] font-bold font-mono px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
           ID: {fileId}
         </span>
         {encryptedKey && encryptedKey !== "unencrypted" ? (
-          <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]">
-            <Lock className="h-2.5 w-2.5" />
+          <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+            <Lock className="h-3 w-3" />
             AES Shielded
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-            <Globe className="h-2.5 w-2.5" />
+          <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+            <Globe className="h-3 w-3" />
             Public
           </span>
         )}
       </div>
 
+      {/* Visibility Status Badge Button */}
       <div className="absolute top-4 right-4 z-20">
         <button
           onClick={(e) => { e.stopPropagation(); !isSharedView && handleToggleVisibility(); }}
-          className={`h-6.5 px-2.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-all ${
+          className={`h-7 px-3 rounded-lg border text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 ${
             isSharedView
               ? "bg-slate-950/40 border-slate-900 text-slate-500 cursor-not-allowed"
               : isPublic
-              ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400 cursor-pointer"
-              : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 cursor-pointer"
+              ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.15)] hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+              : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.15)] hover:shadow-[0_0_15px_rgba(245,158,11,0.3)]"
           }`}
           disabled={isSharedView || isProcessing}
           title={isSharedView ? "Shared file visibility cannot be modified" : "Click to change visibility"}
         >
-          {isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+          {isPublic ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
           <span>{isPublic ? "Public" : "Private"}</span>
         </button>
       </div>
 
       {/* Main File Icon & Title */}
-      <div className="flex-1 flex flex-col items-center justify-center mt-6">
-        <div className={`p-4.5 rounded-2xl bg-gradient-to-tr ${fileMeta.color} shadow-lg shadow-cyan-500/5`}>
-          <FileIcon className="h-10 w-10 text-white" />
+      <div className="flex-1 flex flex-col items-center justify-center mt-10">
+        <div className={`h-20 w-20 rounded-full bg-gradient-to-tr ${fileStyle.gradient} flex items-center justify-center shadow-lg border relative transition-all duration-300 group-hover:scale-105`}>
+          {FileIcon === File ? (
+            <span className="text-sm font-black font-mono tracking-wider text-slate-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+              .{ext.slice(0, 4)}
+            </span>
+          ) : (
+            <FileIcon className="h-9 w-9 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
+          )}
         </div>
-        <h4 className="mt-3.5 text-sm font-bold text-slate-100 max-w-[200px] truncate text-center" title={fileName}>
+        <h4 className="mt-4 text-base font-bold text-slate-100 max-w-full truncate text-center group-hover:text-cyan-400 transition-colors duration-200" title={fileName}>
           {fileName}
         </h4>
-        <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 font-mono">
           <span>{formatBytes(fileSize)}</span>
-          <span className="text-slate-700">•</span>
-          <span>{formatDate(timestamp)}</span>
+          <span className="text-slate-600">•</span>
+          <span>{formatDate(correctedTimestamp)}</span>
         </div>
       </div>
 
       {/* Action Overlay & Metadata Controls */}
-      <div className="border-t border-slate-900/60 pt-4 mt-2 overflow-hidden relative min-h-11">
+      <div className="border-t border-slate-900/60 pt-4 mt-4 overflow-hidden relative min-h-12">
         
         {/* State A: Copy Bar (Resting) */}
-        <div className="flex items-center justify-between transition-all duration-300 group-hover:translate-y-12">
-          <div className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-cyan-400" />
-            <span className="text-[10px] text-slate-500 font-mono">
-              CID: {ipfsHash ? `${ipfsHash.slice(0, 6)}...${ipfsHash.slice(-6)}` : "None"}
-            </span>
-          </div>
-          <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-slate-950/80 border border-slate-900 text-slate-500">
-            Etherscan Index
-          </span>
+        <div className="flex items-center justify-between gap-2 transition-all duration-300 group-hover:translate-y-12">
+          {/* Clickable Owner Address Chip (opens Etherscan) */}
+          <a
+            href={`https://sepolia.etherscan.io/address/${owner}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] text-slate-400 hover:text-slate-200 transition-all font-mono shadow-inner"
+            title={`View owner wallet ${owner} on Etherscan`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span>Owner: {owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : "Unknown"}</span>
+            <ExternalLink className="h-2.5 w-2.5 opacity-55" />
+          </a>
+
+          {/* Clickable CID Copy Chip */}
+          <button
+            onClick={handleCopyCID}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] font-mono transition-all shadow-inner ${
+              copied
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                : "bg-slate-950/60 hover:bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200"
+            }`}
+            title="Click to copy full IPFS CID"
+          >
+            <span>{copied ? "Copied!" : `CID: ${ipfsHash ? `${ipfsHash.slice(0, 5)}...${ipfsHash.slice(-4)}` : "None"}`}</span>
+          </button>
         </div>
 
-        {/* State B: Buttons Overlay (Group Hover) */}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 transition-all duration-300 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 bg-[#0c1020]/95">
+        {/* State B: Buttons Overlay (Group Hover with Staggered Entrance Animations) */}
+        <div className="absolute inset-0 flex items-center justify-center gap-2.5 transition-all duration-300 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 bg-[#0c1020]/95 z-30">
           
           {/* Preview Button */}
-          {fileMeta.previewable && (
+          {fileStyle.previewable && onPreview && (
             <button
               onClick={(e) => { e.stopPropagation(); handlePreviewTrigger(); }}
               disabled={isProcessing}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-355 hover:text-cyan-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              style={{ transitionDelay: "0ms" }}
               title="Quick Preview Decrypted"
             >
               {isProcessing && downloadProgress.includes("Preview") ? (
@@ -364,7 +502,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           <button
             onClick={(e) => { e.stopPropagation(); handleDownload(); }}
             disabled={isProcessing}
-            className="h-9 px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center justify-center gap-1 text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95 border-none"
+            className="h-9 px-4.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95 border-none"
+            style={{ transitionDelay: "50ms" }}
             title="Decrypt & Download"
           >
             {isProcessing && downloadProgress.includes("Fetching") ? (
@@ -372,14 +511,15 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             ) : (
               <Download className="h-3.5 w-3.5 text-white" />
             )}
-            <span>Download</span>
+            <span>{getDownloadButtonText()}</span>
           </button>
 
           {/* Share Control */}
-          {!isSharedView && (
+          {!isSharedView && onShare && (
             <button
-              onClick={(e) => { e.stopPropagation(); onShare && onShare(file); }}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-violet-500/50 hover:bg-violet-500/10 text-slate-300 hover:text-violet-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onShare(file); }}
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 hover:bg-purple-500/10 text-slate-300 hover:text-purple-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              style={{ transitionDelay: "100ms" }}
               title="Share Key Access"
             >
               <Share2 className="h-3.5 w-3.5" />
@@ -391,7 +531,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               disabled={isProcessing}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all duration-300 cursor-pointer"
+              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              style={{ transitionDelay: "150ms" }}
               title="Delete File"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -403,7 +544,8 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={(e) => { e.stopPropagation(); handleSelfRevoke(); }}
               disabled={isProcessing}
-              className="h-9 px-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 cursor-pointer disabled:opacity-50 border-none"
+              className="h-9 px-4 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer disabled:opacity-50 border-none"
+              style={{ transitionDelay: "150ms" }}
               title="Remove My Access"
             >
               {isProcessing && downloadProgress.includes("Revoking") ? (
@@ -416,6 +558,18 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           )}
         </div>
       </div>
+
+      {/* Download Progress Indicator (bottom border bar) */}
+      {isProcessing && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-950 rounded-b-2xl overflow-hidden z-20">
+          <div 
+            className={`h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200 ease-out ${
+              downloadPercent === 0 ? "w-full animate-pulse" : ""
+            }`}
+            style={{ width: downloadPercent > 0 ? `${downloadPercent}%` : "100%" }}
+          />
+        </div>
+      )}
     </div>
   );
 }
