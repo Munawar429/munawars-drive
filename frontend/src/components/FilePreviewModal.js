@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, ZoomIn, Download } from "lucide-react";
+import { X, ZoomIn, Download, ShieldAlert } from "lucide-react";
 
 export default function FilePreviewModal({ isOpen, onClose, fileData, fileName, fileType }) {
   const [objectUrl, setObjectUrl] = useState("");
@@ -10,13 +10,16 @@ export default function FilePreviewModal({ isOpen, onClose, fileData, fileName, 
   useEffect(() => {
     if (!isOpen || !fileData) return;
 
-    const isText = fileType.startsWith("text/") || 
-                   fileType === "application/json" || 
-                   fileType === "application/javascript" || 
-                   fileName.endsWith(".sol") || 
-                   fileName.endsWith(".py") || 
-                   fileName.endsWith(".js") || 
-                   fileName.endsWith(".ts");
+    const type = fileType || "";
+    const name = fileName || "";
+
+    const isText = type.startsWith("text/") || 
+                   type === "application/json" || 
+                   type === "application/javascript" || 
+                   name.endsWith(".sol") || 
+                   name.endsWith(".py") || 
+                   name.endsWith(".js") || 
+                   name.endsWith(".ts");
 
     if (isText) {
       // Decode arraybuffer to string
@@ -26,7 +29,7 @@ export default function FilePreviewModal({ isOpen, onClose, fileData, fileName, 
       setObjectUrl("");
     } else {
       // Convert buffer to object URL for images
-      const blob = new Blob([fileData], { type: fileType });
+      const blob = new Blob([fileData], { type: type });
       const url = window.URL.createObjectURL(blob);
       setObjectUrl(url);
       setTextContent("");
@@ -41,7 +44,7 @@ export default function FilePreviewModal({ isOpen, onClose, fileData, fileName, 
 
   if (!isOpen) return null;
 
-  const isImage = fileType.startsWith("image/");
+  const isImage = fileType && fileType.startsWith("image/");
   const isText = textContent !== "";
 
   return (

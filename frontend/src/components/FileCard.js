@@ -294,13 +294,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
         }
       }
 
-      const blob = new Blob([plaintextBuffer], { type: fileType });
-      const objectURL = window.URL.createObjectURL(blob);
-      onPreview({
-        fileName,
-        fileType,
-        objectURL
-      });
+      onPreview(plaintextBuffer, fileName, fileType);
       setDownloadProgress("");
     } catch (e) {
       console.error("Preview Decryption Error:", e);
