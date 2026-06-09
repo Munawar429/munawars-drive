@@ -148,8 +148,11 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
       // 2. Decrypt symmetric file key locally using owner's keys
       console.log("🔒 [KeyExchange] Extracting raw symmetric key of the file...");
+      if (!file.encryptedKey || file.encryptedKey === "unencrypted") {
+        throw new Error("This file is public/unencrypted and does not require a decryption key to be shared.");
+      }
       let rawFileKey;
-      const isRsaEncrypted = file.encryptedKey.length > 200;
+      const isRsaEncrypted = file.encryptedKey && file.encryptedKey.length > 200;
       
       if (isRsaEncrypted) {
         const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");

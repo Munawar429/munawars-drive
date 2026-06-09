@@ -148,36 +148,53 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       const encryptedBuffer = response.data;
       let plaintextBuffer;
 
-      const isRsaEncrypted = encryptedKey.length > 200;
-
-      if (isRsaEncrypted) {
-        const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
-        if (!rsaPrivateKeyJson) {
-          throw new Error("Local RSA Private Key not found in browser storage. Please log in again.");
+      // Resolve current key (fetch recipient's key from db if shared and encrypted)
+      let currentKey = encryptedKey;
+      if (isSharedView && encryptedKey && encryptedKey !== "unencrypted") {
+        try {
+          const keyRes = await axios.get(`${API_URL}/ipfs/share-key/${fileId}`);
+          if (keyRes.data && keyRes.data.encryptedKey) {
+            currentKey = keyRes.data.encryptedKey;
+          }
+        } catch (err) {
+          console.warn("Failed to fetch shared key from database, falling back to blockchain key:", err);
         }
-        const fileKeyBytes = await decryptFileKeyWithRSA(encryptedKey, rsaPrivateKeyJson);
-        const packedFileBytes = new Uint8Array(encryptedBuffer);
-        const fileIv = packedFileBytes.slice(0, 12);
-        const ciphertextBytes = packedFileBytes.slice(12);
+      }
 
-        const cryptoFileKey = await window.crypto.subtle.importKey(
-          "raw",
-          fileKeyBytes,
-          { name: "AES-GCM" },
-          false,
-          ["decrypt"]
-        );
-
-        plaintextBuffer = await window.crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: fileIv },
-          cryptoFileKey,
-          ciphertextBytes
-        );
+      if (!currentKey || currentKey === "unencrypted") {
+        plaintextBuffer = encryptedBuffer;
       } else {
-        if (!masterSeed) {
-          throw new Error("Owner's Master Seed not found. Please log in again.");
+        const isRsaEncrypted = currentKey.length > 200;
+
+        if (isRsaEncrypted) {
+          const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
+          if (!rsaPrivateKeyJson) {
+            throw new Error("Local RSA Private Key not found in browser storage. Please log in again.");
+          }
+          const fileKeyBytes = await decryptFileKeyWithRSA(currentKey, rsaPrivateKeyJson);
+          const packedFileBytes = new Uint8Array(encryptedBuffer);
+          const fileIv = packedFileBytes.slice(0, 12);
+          const ciphertextBytes = packedFileBytes.slice(12);
+
+          const cryptoFileKey = await window.crypto.subtle.importKey(
+            "raw",
+            fileKeyBytes,
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+          );
+
+          plaintextBuffer = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: fileIv },
+            cryptoFileKey,
+            ciphertextBytes
+          );
+        } else {
+          if (!masterSeed) {
+            throw new Error("Owner's Master Seed not found. Please log in again.");
+          }
+          plaintextBuffer = await decryptFileClientSide(encryptedBuffer, currentKey, masterSeed);
         }
-        plaintextBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
       }
 
       setDownloadProgress("Assembling Blob...");
@@ -228,36 +245,53 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
       const encryptedBuffer = response.data;
       let plaintextBuffer;
 
-      const isRsaEncrypted = encryptedKey.length > 200;
-
-      if (isRsaEncrypted) {
-        const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
-        if (!rsaPrivateKeyJson) {
-          throw new Error("Local RSA Private Key not found. Please log in again.");
+      // Resolve current key (fetch recipient's key from db if shared and encrypted)
+      let currentKey = encryptedKey;
+      if (isSharedView && encryptedKey && encryptedKey !== "unencrypted") {
+        try {
+          const keyRes = await axios.get(`${API_URL}/ipfs/share-key/${fileId}`);
+          if (keyRes.data && keyRes.data.encryptedKey) {
+            currentKey = keyRes.data.encryptedKey;
+          }
+        } catch (err) {
+          console.warn("Failed to fetch shared key from database, falling back to blockchain key:", err);
         }
-        const fileKeyBytes = await decryptFileKeyWithRSA(encryptedKey, rsaPrivateKeyJson);
-        const packedFileBytes = new Uint8Array(encryptedBuffer);
-        const fileIv = packedFileBytes.slice(0, 12);
-        const ciphertextBytes = packedFileBytes.slice(12);
+      }
 
-        const cryptoFileKey = await window.crypto.subtle.importKey(
-          "raw",
-          fileKeyBytes,
-          { name: "AES-GCM" },
-          false,
-          ["decrypt"]
-        );
-
-        plaintextBuffer = await window.crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: fileIv },
-          cryptoFileKey,
-          ciphertextBytes
-        );
+      if (!currentKey || currentKey === "unencrypted") {
+        plaintextBuffer = encryptedBuffer;
       } else {
-        if (!masterSeed) {
-          throw new Error("Owner's Master Seed not found. Please log in again.");
+        const isRsaEncrypted = currentKey.length > 200;
+
+        if (isRsaEncrypted) {
+          const rsaPrivateKeyJson = localStorage.getItem("w3d_rsa_private_key");
+          if (!rsaPrivateKeyJson) {
+            throw new Error("Local RSA Private Key not found. Please log in again.");
+          }
+          const fileKeyBytes = await decryptFileKeyWithRSA(currentKey, rsaPrivateKeyJson);
+          const packedFileBytes = new Uint8Array(encryptedBuffer);
+          const fileIv = packedFileBytes.slice(0, 12);
+          const ciphertextBytes = packedFileBytes.slice(12);
+
+          const cryptoFileKey = await window.crypto.subtle.importKey(
+            "raw",
+            fileKeyBytes,
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+          );
+
+          plaintextBuffer = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: fileIv },
+            cryptoFileKey,
+            ciphertextBytes
+          );
+        } else {
+          if (!masterSeed) {
+            throw new Error("Owner's Master Seed not found. Please log in again.");
+          }
+          plaintextBuffer = await decryptFileClientSide(encryptedBuffer, currentKey, masterSeed);
         }
-        plaintextBuffer = await decryptFileClientSide(encryptedBuffer, encryptedKey, masterSeed);
       }
 
       const blob = new Blob([plaintextBuffer], { type: fileType });
