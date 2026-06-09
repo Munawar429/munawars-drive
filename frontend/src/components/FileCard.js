@@ -416,24 +416,24 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
     <div className={`relative group flex flex-col justify-between min-h-[20rem] h-auto rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-6 transition-all duration-300 ${fileStyle.glow} select-none overflow-hidden`}>
       
       {/* Floating Badges (Combined in single Flex Row to prevent overlap) */}
-      <div className="absolute top-4 left-4 z-20 flex flex-row items-center gap-2">
-        <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
+      <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center gap-1.5">
+        <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm whitespace-nowrap" title="Blockchain File ID">
           ID: {fileId}
         </span>
         {encryptedKey && encryptedKey !== "unencrypted" ? (
-          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)] whitespace-nowrap">
             <Lock className="h-2.5 w-2.5" />
             AES Shielded
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)] whitespace-nowrap">
             <Globe className="h-2.5 w-2.5" />
             Public
           </span>
         )}
         <button
           onClick={(e) => { e.stopPropagation(); !isSharedView && handleToggleVisibility(); }}
-          className={`h-5.5 px-2 rounded-lg border text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 transition-all duration-300 ${
+          className={`h-5 px-2 rounded-lg border text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 transition-all duration-300 whitespace-nowrap ${
             isSharedView
               ? "bg-slate-950/40 border-slate-900 text-slate-500 cursor-not-allowed"
               : isPublic
@@ -462,10 +462,10 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
         <h4 className="mt-4 text-base font-bold text-slate-100 max-w-full truncate text-center group-hover:text-cyan-400 transition-colors duration-200" title={fileName}>
           {fileName}
         </h4>
-        <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-          <span>{formatBytes(fileSize)}</span>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-xs text-slate-400 font-mono text-center max-w-full">
+          <span className="whitespace-nowrap">{formatBytes(fileSize)}</span>
           <span className="text-slate-600">•</span>
-          <span>{formatDate(correctedTimestamp)}</span>
+          <span className="text-center">{formatDate(correctedTimestamp)}</span>
         </div>
       </div>
 
@@ -503,14 +503,14 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
         </div>
 
         {/* State B: Buttons Overlay (Group Hover with Staggered Entrance Animations) */}
-        <div className="absolute inset-0 flex items-center justify-center gap-2.5 transition-all duration-300 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 bg-[#0c1020]/95 z-30">
+        <div className="absolute inset-0 flex items-center justify-center gap-1.5 transition-all duration-300 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 bg-[#0c1020]/95 z-30">
           
           {/* Preview Button */}
           {fileStyle.previewable && onPreview && (
             <button
               onClick={(e) => { e.stopPropagation(); handlePreviewTrigger(); }}
               disabled={isProcessing}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              className="h-8 w-8 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
               style={{ transitionDelay: "0ms" }}
               title="Quick Preview Decrypted"
             >
@@ -526,7 +526,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           <button
             onClick={(e) => { e.stopPropagation(); handleDownload(); }}
             disabled={isProcessing}
-            className="h-9 px-4.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95 border-none"
+            className="h-8 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95 border-none"
             style={{ transitionDelay: "50ms" }}
             title="Decrypt & Download"
           >
@@ -542,7 +542,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
           {!isSharedView && onShare && (
             <button
               onClick={(e) => { e.stopPropagation(); onShare(file); }}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 hover:bg-purple-500/10 text-slate-300 hover:text-purple-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              className="h-8 w-8 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 hover:bg-purple-500/10 text-slate-300 hover:text-purple-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
               style={{ transitionDelay: "100ms" }}
               title="Share Key Access"
             >
@@ -555,7 +555,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               disabled={isProcessing}
-              className="h-9 w-9 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
+              className="h-8 w-8 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer"
               style={{ transitionDelay: "150ms" }}
               title="Delete File"
             >
@@ -568,7 +568,7 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
             <button
               onClick={(e) => { e.stopPropagation(); handleSelfRevoke(); }}
               disabled={isProcessing}
-              className="h-9 px-4 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 flex items-center justify-center gap-1.5 text-xs font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer disabled:opacity-50 border-none"
+              className="h-8 px-3 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 cursor-pointer disabled:opacity-50 border-none"
               style={{ transitionDelay: "150ms" }}
               title="Remove My Access"
             >
