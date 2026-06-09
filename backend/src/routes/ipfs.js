@@ -25,8 +25,17 @@ if (fs.existsSync(configPath)) {
   }
 }
 
-// Connect to local EVM Node provider
-const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+// Connect to EVM Node provider (Dynamic auto-selection based on contract address)
+let rpcUrl = process.env.RPC_URL;
+if (!rpcUrl) {
+  const contractAddress = (Web3DriveConfig.address || "").toLowerCase();
+  if (contractAddress === "0x5fbdb2315678afecb367f032d93f642f64180aa3" || contractAddress === "") {
+    rpcUrl = "http://127.0.0.1:8545";
+  } else {
+    rpcUrl = "https://ethereum-sepolia-rpc.publicnode.com";
+  }
+}
+console.log(`🔌 [AccessGate] Connecting to Ethereum RPC Node: ${rpcUrl}`);
 const provider = new ethers.JsonRpcProvider(rpcUrl);
 const contract = new ethers.Contract(
   Web3DriveConfig.address || "0x0000000000000000000000000000000000000000",
