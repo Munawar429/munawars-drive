@@ -55,6 +55,23 @@ export const AuthProvider = ({ children }) => {
     disconnectWeb3();
   }, [disconnectWeb3]);
 
+  // Set up axios interceptor to automatically catch 401 errors (e.g., if database is reset/restarted) and log out
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          console.warn("⚠️ [Vault3 Auth] Received 401 Unauthorized. Clearing session and logging out...");
+          logout();
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [logout]);
+
   // Restore session on bootstrap
   useEffect(() => {
     const restoreSession = async () => {
