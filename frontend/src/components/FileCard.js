@@ -387,39 +387,35 @@ export default function FileCard({ file, isSharedView = false, onActionSuccess, 
   return (
     <div className={`relative group flex flex-col justify-between min-h-[20rem] h-auto rounded-2xl border border-white/10 bg-[#0c1020]/80 backdrop-blur-lg p-6 transition-all duration-300 ${fileStyle.glow} select-none overflow-hidden`}>
       
-      {/* Floating Badges */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-        <span className="text-[10px] font-bold font-mono px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
+      {/* Floating Badges (Combined in single Flex Row to prevent overlap) */}
+      <div className="absolute top-4 left-4 z-20 flex flex-row items-center gap-2">
+        <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300 shadow-sm" title="Blockchain File ID">
           ID: {fileId}
         </span>
         {encryptedKey && encryptedKey !== "unencrypted" ? (
-          <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-            <Lock className="h-3 w-3" />
+          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+            <Lock className="h-2.5 w-2.5" />
             AES Shielded
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-            <Globe className="h-3 w-3" />
+          <span className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+            <Globe className="h-2.5 w-2.5" />
             Public
           </span>
         )}
-      </div>
-
-      {/* Visibility Status Badge Button */}
-      <div className="absolute top-4 right-4 z-20">
         <button
           onClick={(e) => { e.stopPropagation(); !isSharedView && handleToggleVisibility(); }}
-          className={`h-7 px-3 rounded-lg border text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 ${
+          className={`h-5.5 px-2 rounded-lg border text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 transition-all duration-300 ${
             isSharedView
               ? "bg-slate-950/40 border-slate-900 text-slate-500 cursor-not-allowed"
               : isPublic
-              ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.15)] hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-              : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.15)] hover:shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+              ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+              : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.15)]"
           }`}
           disabled={isSharedView || isProcessing}
           title={isSharedView ? "Shared file visibility cannot be modified" : "Click to change visibility"}
         >
-          {isPublic ? <Globe className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          {isPublic ? <Globe className="h-2.5 w-2.5" /> : <Lock className="h-2.5 w-2.5" />}
           <span>{isPublic ? "Public" : "Private"}</span>
         </button>
       </div>
