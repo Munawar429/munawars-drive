@@ -161,17 +161,32 @@ router.get("/download/:cid", protect, async (req, res) => {
       if (isContractActive) {
         // Hash the string CID into bytes32 to check on-chain permissions
         const cidHash = ethers.solidityPackedKeccak256(["string"], [cid]);
-        console.log(`🔐 [AccessGate] Querying contract access for CID ${cid} (Hash: ${cidHash}), Wallet: ${user.walletAddress}`);
+        const userAddr = user.walletAddress.toLowerCase();
+        console.log(`🔐 [AccessGate] Querying contract access for CID ${cid} (Hash: ${cidHash}), Wallet: ${userAddr}`);
         
-        const hasAccess = await contract.hasAccess(cidHash, user.walletAddress.toLowerCase());
-        if (!hasAccess) {
-          console.warn(`❌ [AccessGate] Unauthorized download attempt blocked for wallet: ${user.walletAddress}`);
+        const hasAccess = await contract.hasAccess(cidHash, userAddr);
+        let allowed = hasAccess;
+
+        if (!allowed) {
+          try {
+            const fileOwner = await contract.fileOwners(cidHash);
+            if (fileOwner && fileOwner.toLowerCase() === userAddr) {
+              console.log(`ℹ️ [AccessGate] Fallback: Access authorized for file owner: ${userAddr}`);
+              allowed = true;
+            }
+          } catch (ownerErr) {
+            console.warn(`⚠️ [AccessGate] Fallback owner check failed: ${ownerErr.message}`);
+          }
+        }
+
+        if (!allowed) {
+          console.warn(`❌ [AccessGate] Unauthorized download attempt blocked for wallet: ${userAddr}`);
           return res.status(403).json({
             success: false,
             message: "Access Denied — This file is no longer accessible to you"
           });
         }
-        console.log(`✅ [AccessGate] Access authorized successfully for wallet: ${user.walletAddress}`);
+        console.log(`✅ [AccessGate] Access authorized successfully for wallet: ${userAddr}`);
       } else {
         console.warn("⚠️ [AccessGate] Web3Drive smart contract is not deployed on this network yet. Skipping check.");
       }
