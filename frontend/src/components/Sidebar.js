@@ -176,23 +176,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         {renderNavItem("logs")}
       </nav>
 
-      {/* Storage Card */}
-      <div className="mx-1 bg-[#0a1929] border-[0.5px] border-[#1a2a40] rounded-[10px] p-[14px] mt-[16px] shrink-0">
-        <div className="flex justify-between items-center text-[11px] text-[#4a7fa5] mb-2">
-          <span>Storage</span>
-          <span>{storageUsed !== null ? `${formatGB(storageUsed)} GB` : "1.8 GB"} / 5 GB</span>
-        </div>
-        <div className="h-[4px] bg-[#0d1f33] rounded-[10px] w-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#22d3ee] rounded-[10px] transition-all duration-500" 
-            style={{ width: `${usedPercent}%` }}
-          />
-        </div>
-        <div className="text-[12px] text-[#7ab3d4] font-medium mt-2">
-          {usedPercent}% used
-        </div>
-      </div>
-
       {/* Footer Profile */}
       <div className="pt-4 border-t-[0.5px] border-[#1a2a40] bg-[#060f1e]/40 shrink-0">
         <div className="p-3.5 rounded-xl bg-[#0a1929] border-[0.5px] border-[#1a2a40]">
