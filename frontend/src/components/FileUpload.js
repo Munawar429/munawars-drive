@@ -15,8 +15,48 @@ import {
   CheckCircle2, 
   Coins, 
   Clock,
-  Loader2
+  Loader2,
+  Image as ImageIcon,
+  FileText,
+  Archive,
+  File,
+  X,
+  Flame,
+  Trash2,
+  Shield,
+  Check
 } from "lucide-react";
+
+// Helper to resolve preview icons and colors
+const getPreviewIconInfo = (filename) => {
+  const ext = filename ? filename.split(".").pop().toLowerCase() : "";
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+    return {
+      icon: ImageIcon,
+      bg: "bg-[#042f2e]",
+      color: "text-[#2dd4bf]",
+    };
+  }
+  if (ext === "pdf") {
+    return {
+      icon: FileText,
+      bg: "bg-[#3b0f0f]",
+      color: "text-[#f87171]",
+    };
+  }
+  if (["zip", "rar"].includes(ext)) {
+    return {
+      icon: Archive,
+      bg: "bg-[#1e1b4b]",
+      color: "text-[#a78bfa]",
+    };
+  }
+  return {
+    icon: File,
+    bg: "bg-[#0c2a44]",
+    color: "text-[#38bdf8]",
+  };
+};
 
 export default function FileUpload({ onUploadSuccess }) {
   const [dragActive, setDragActive] = useState(false);
@@ -223,7 +263,7 @@ export default function FileUpload({ onUploadSuccess }) {
   };
 
   return (
-    <div className="glass-card max-w-2xl mx-auto p-8 glow-border">
+    <div className="max-w-2xl mx-auto p-8 bg-[#050d1a] border-[0.5px] border-[#1a2a40] rounded-[14px]">
       {/* Drag & Drop Box */}
       {uploadPhase === "idle" && (
         <div
@@ -231,7 +271,7 @@ export default function FileUpload({ onUploadSuccess }) {
           onDragOver={handleDrag}
           onDragLeave={handleDrag}
           onDrop={handleDrop}
-          onClick={triggerInputClick}
+          onClick={file ? undefined : triggerInputClick}
           className={`border-[1.5px] border-dashed rounded-[14px] bg-[#080f1e] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors duration-200 ${
             dragActive
               ? "border-[#38bdf8]"
@@ -246,26 +286,73 @@ export default function FileUpload({ onUploadSuccess }) {
           />
 
           {/* Zero-knowledge encrypted badge */}
-          <div className="flex items-center gap-2 bg-[#0c2a44] border border-[#1e4976]/50 rounded-[20px] px-[12px] py-[4px] text-[11px] text-[#38bdf8] mb-5 select-none">
+          <div className="flex items-center gap-2 bg-[#0c2a44] border-[0.5px] border-[#1e4976]/50 rounded-[20px] px-[12px] py-[4px] text-[11px] text-[#38bdf8] mb-5 select-none font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-[#22d3ee] shrink-0" />
             <span>Zero-knowledge encrypted before IPFS upload</span>
           </div>
 
-          <div className="h-[60px] w-[60px] rounded-full bg-[#0c2a44] border border-[#1e3a5f] flex items-center justify-center text-[#38bdf8] mb-4 hover:scale-105 transition-transform duration-300">
-            <Upload className="h-[26px] w-[26px]" />
-          </div>
-
           {file ? (
-            <div className="text-center">
-              <p className="text-sm font-semibold text-[#cee9ff] truncate max-w-sm">
-                {file.name}
-              </p>
-              <p className="text-xs text-[#4a7fa5] mt-1 font-mono">
-                {formatBytes(file.size)}
-              </p>
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              className="w-full max-w-lg bg-[#0a1929] border-[0.5px] border-[#1e3a5f] rounded-[10px] p-[14px] px-[16px] flex items-center gap-[14px] cursor-default"
+            >
+              {/* Left side: File type icon box */}
+              {(() => {
+                const { icon: FileIcon, bg: iconBg, color: iconColor } = getPreviewIconInfo(file.name);
+                return (
+                  <div className={`w-[44px] h-[44px] rounded-[10px] ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
+                    <FileIcon className="h-5 w-5" />
+                  </div>
+                );
+              })()}
+
+              {/* Middle: File info & encryption progress bar */}
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <div className="text-[14px] font-medium text-[#cee9ff] truncate" title={file.name}>
+                    {file.name}
+                  </div>
+                  <div className="flex items-center gap-[10px]">
+                    <span className="text-[12px] text-[#4a7fa5] font-mono">
+                      {formatBytes(file.size)}
+                    </span>
+                    <span className="text-[10px] px-[8px] py-[2px] bg-[#042f2e] text-[#2dd4bf] border-[0.5px] border-[#0f6e56] rounded-[20px] font-medium">
+                      AES-256 Ready
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5 mt-0.5">
+                  <div className="flex justify-between text-[11px] text-[#4a7fa5]">
+                    <span>Encryption preparing...</span>
+                    <span>65%</span>
+                  </div>
+                  <div className="h-[4px] bg-[#0a1929] rounded-[10px] w-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#22d3ee] rounded-[10px]" 
+                      style={{ width: "65%" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right side: Remove button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFile(null);
+                }}
+                className="w-[28px] h-[28px] rounded-full bg-[#1a1025] border-[0.5px] border-[#3b1f4a] text-[#a78bfa] flex items-center justify-center shrink-0 transition-all duration-200 hover:bg-[#251535]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           ) : (
             <div className="text-center flex flex-col items-center">
+              <div className="h-[60px] w-[60px] rounded-full bg-[#0c2a44] border-[0.5px] border-[#1e3a5f] flex items-center justify-center text-[#38bdf8] mb-4 hover:scale-105 transition-transform duration-300">
+                <Upload className="h-[26px] w-[26px]" />
+              </div>
               <h4 className="text-[17px] font-medium text-[#cee9ff] mb-1">
                 Upload Encrypted Documents
               </h4>
@@ -282,7 +369,7 @@ export default function FileUpload({ onUploadSuccess }) {
               {/* Chips row */}
               <div className="flex flex-row flex-wrap justify-center gap-2">
                 {["PDF", "Images", "ZIP", "Code", "Up to 100MB"].map((chip) => (
-                  <span key={chip} className="bg-[#0a1929] border border-[#1a2a40] rounded-[20px] px-[10px] py-[3px] text-[11px] text-[#4a7fa5] font-medium">
+                  <span key={chip} className="bg-[#0a1929] border-[0.5px] border-[#1a2a40] rounded-[20px] px-[10px] py-[3px] text-[11px] text-[#4a7fa5] font-medium">
                     {chip}
                   </span>
                 ))}
@@ -294,19 +381,19 @@ export default function FileUpload({ onUploadSuccess }) {
 
       {/* Progressive Phase Loader */}
       {uploadPhase !== "idle" && uploadPhase !== "success" && uploadPhase !== "error" && (
-        <div className="border border-slate-800/80 rounded-2xl p-8 bg-slate-950/45 backdrop-blur-md flex flex-col items-center">
+        <div className="border-[0.5px] border-[#1a2a40] rounded-2xl p-8 bg-[#080f1d] flex flex-col items-center">
           <Loader2 className="h-10 w-10 text-cyan-400 animate-spin mb-4" />
           
-          <div className="progress-container">
-            <div className="status-text">
+          <div className="progress-container w-full">
+            <div className="status-text text-center text-xs text-[#cee9ff] font-medium">
               {uploadPhase === "encrypting" && "🔒 Locking Vault (AES-GCM Shielding...)"}
               {uploadPhase === "uploading_ipfs" && "🌐 Dispatching to IPFS (Decentralized Pinning...)"}
               {uploadPhase === "blockchain_tx" && "⛓️ Syncing Ledger (Blockchain Registration...)"}
             </div>
             
-            <div className="progress-bar-background mt-2">
+            <div className="progress-bar-background mt-2 bg-[#0a1929] h-[4px] rounded-[10px] overflow-hidden">
               <div 
-                className="progress-bar-fill" 
+                className="progress-bar-fill h-full bg-gradient-to-r from-[#0ea5e9] to-[#22d3ee] transition-all duration-500" 
                 style={{
                   width: 
                     uploadPhase === "encrypting" ? "33%" : 
@@ -316,7 +403,7 @@ export default function FileUpload({ onUploadSuccess }) {
             </div>
           </div>
 
-          <p className="text-xs text-slate-400 text-center mt-4 max-w-sm leading-normal">
+          <p className="text-xs text-[#4a7fa5] text-center mt-4 max-w-sm leading-normal">
             {uploadPhase === "encrypting" && "Generating random 256-bit AES key to cryptographically seal the file in memory."}
             {uploadPhase === "uploading_ipfs" && "Transferring the securely encrypted binary payload to Pinata IPFS nodes."}
             {uploadPhase === "blockchain_tx" && "Broadcasting file CID, encrypted keys, and SHA-256 integrity signatures on-chain via MetaMask."}
@@ -326,20 +413,20 @@ export default function FileUpload({ onUploadSuccess }) {
 
       {/* Success View */}
       {uploadPhase === "success" && (
-        <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-2xl p-8 flex flex-col items-center text-center">
+        <div className="border-[0.5px] border-emerald-500/20 bg-emerald-500/5 rounded-2xl p-8 flex flex-col items-center text-center">
           <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
           <h4 className="text-base font-bold text-slate-200">Decentralized Storage Sealed!</h4>
           <p className="text-xs text-slate-400 mt-2 max-w-sm">
             The encrypted file is securely pinned to IPFS, and its cryptographic fingerprint is registered on the blockchain.
           </p>
           {txHash && (
-            <div className="mt-4 p-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-cyan-400 select-all cursor-pointer">
+            <div className="mt-4 p-2 bg-slate-950 border-[0.5px] border-slate-800 rounded-lg text-[10px] font-mono text-cyan-400 select-all cursor-pointer">
               Tx: {txHash}
             </div>
           )}
           <button
             onClick={() => setUploadPhase("idle")}
-            className="mt-5 glass-btn-secondary px-5 py-2 text-xs"
+            className="mt-5 bg-[#0a1929] border-[0.5px] border-[#1a2a40] text-[#7ab3d4] hover:bg-[#0d1f33] rounded-[8px] px-5 py-2 text-xs transition-colors duration-200"
           >
             Upload Another File
           </button>
@@ -348,22 +435,22 @@ export default function FileUpload({ onUploadSuccess }) {
 
       {/* Error View */}
       {uploadPhase === "error" && (
-        <div className="border border-rose-500/20 bg-rose-500/5 rounded-2xl p-8 flex flex-col items-center text-center">
+        <div className="border-[0.5px] border-rose-500/20 bg-rose-500/5 rounded-2xl p-8 flex flex-col items-center text-center">
           <ShieldAlert className="h-12 w-12 text-rose-400 mb-3" />
           <h4 className="text-base font-bold text-slate-200">Registration Failed</h4>
-          <p className="text-xs text-rose-400 mt-2 max-w-sm">
+          <p className="text-xs text-rose-450 mt-2 max-w-sm">
             {errorMessage}
           </p>
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setUploadPhase("idle")}
-              className="glass-btn-secondary px-5 py-2 text-xs"
+              className="bg-[#0a1929] border-[0.5px] border-[#1a2a40] text-[#7ab3d4] hover:bg-[#0d1f33] rounded-[8px] px-5 py-2 text-xs transition-colors duration-200"
             >
               Cancel
             </button>
             <button
               onClick={startUpload}
-              className="glass-btn-primary px-5 py-2 text-xs"
+              className="bg-[#0ea5e9] text-white hover:bg-[#0284c7] rounded-[8px] px-5 py-2 text-xs font-semibold transition-colors duration-200"
             >
               Retry Upload
             </button>
@@ -376,90 +463,122 @@ export default function FileUpload({ onUploadSuccess }) {
         <div className="mt-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Visibility Option */}
-            <div className="p-4 rounded-xl bg-slate-900/30 border border-slate-800/40">
-              <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-2">
-                Ledger Visibility
+            <div className="p-[14px] bg-[#080f1d] border-[0.5px] border-[#1a2a40] rounded-[10px]">
+              <label className="text-[10px] font-medium text-[#4a7fa5] tracking-[0.08em] uppercase mb-[10px] block">
+                LEDGER VISIBILITY
               </label>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPublic(false)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-[7px] py-[9px] px-[12px] rounded-[8px] text-[13px] font-medium transition-all duration-200 border ${
                     !isPublic
-                      ? "bg-slate-950 border-cyan-500/40 text-cyan-400 shadow-sm shadow-cyan-500/10"
-                      : "bg-transparent border-slate-800 text-slate-500 hover:text-slate-350"
+                      ? "bg-[#0c2a44] border-[0.5px] border-[#38bdf8] text-[#38bdf8]"
+                      : "bg-[#0a1929] border-[0.5px] border-[#1a2a40] text-[#4a7fa5] hover:text-[#cee9ff]"
                   }`}
                 >
-                  <Lock className="h-3 w-3" />
-                  Private Drive
+                  <Lock className="h-4 w-4 shrink-0" />
+                  <span>Private Drive</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsPublic(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-[7px] py-[9px] px-[12px] rounded-[8px] text-[13px] font-medium transition-all duration-200 border ${
                     isPublic
-                      ? "bg-slate-950 border-cyan-500/40 text-cyan-400 shadow-sm shadow-cyan-500/10"
-                      : "bg-transparent border-slate-800 text-slate-500 hover:text-slate-350"
+                      ? "bg-[#0c2a44] border-[0.5px] border-[#38bdf8] text-[#38bdf8]"
+                      : "bg-[#0a1929] border-[0.5px] border-[#1a2a40] text-[#4a7fa5] hover:text-[#cee9ff]"
                   }`}
                 >
-                  <Globe className="h-3 w-3" />
-                  Public Shared
+                  <Globe className="h-4 w-4 shrink-0" />
+                  <span>Public Shared</span>
                 </button>
               </div>
             </div>
 
             {/* Cryptographic Protection Option */}
-            <div className="p-4 rounded-xl bg-slate-900/30 border border-slate-800/40 flex flex-col justify-between">
+            <div className="p-[14px] bg-[#080f1d] border-[0.5px] border-[#1a2a40] rounded-[10px] flex flex-col justify-between">
               <div>
-                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-1">
-                  Security Lock
-                </label>
-                <span className="text-[10px] text-slate-400 leading-tight block">
-                  Seal document locally in browser prior to transmission.
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[13px] font-medium text-[#cee9ff]">
+                    Security Lock
+                  </span>
+                  
+                  {/* AES-GCM Secured Toggle Switch */}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={encryptFile}
+                      onChange={(e) => setEncryptFile(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-[#0a1929] border-[0.5px] border-[#1a2a40] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-600 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0ea5e9] peer-checked:after:bg-white"></div>
+                    <span className="ml-2 text-[13px] text-[#cee9ff] font-medium">
+                      AES-GCM Secured
+                    </span>
+                  </label>
+                </div>
+                <div className="text-[11px] text-[#4a7fa5] mb-3">
+                  Sealed locally before transmission
+                </div>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer mt-2.5">
-                <input
-                  type="checkbox"
-                  checked={encryptFile}
-                  onChange={(e) => setEncryptFile(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-slate-950 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-600 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500 peer-checked:after:bg-slate-100"></div>
-                <span className="ml-2 text-xs font-semibold text-slate-300">
-                  {encryptFile ? "AES-GCM Secured" : "Plaintext (No Encryption)"}
-                </span>
-              </label>
+
+              {/* Two checkmark rows */}
+              <div className="flex flex-col gap-2 mt-1">
+                <div className="flex items-center gap-[8px]">
+                  <div className="w-[16px] h-[16px] rounded-full bg-[#042f2e] text-[#2dd4bf] flex items-center justify-center shrink-0">
+                    <Check className="h-2.5 w-2.5" />
+                  </div>
+                  <span className="text-[12px] text-[#7ab3d4]">
+                    AES-GCM 256-bit encryption
+                  </span>
+                </div>
+                <div className="flex items-center gap-[8px]">
+                  <div className="w-[16px] h-[16px] rounded-full bg-[#042f2e] text-[#2dd4bf] flex items-center justify-center shrink-0">
+                    <Check className="h-2.5 w-2.5" />
+                  </div>
+                  <span className="text-[12px] text-[#7ab3d4]">
+                    End-to-end zero-knowledge
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Gas Estimate Card */}
-          <div className="p-4 rounded-xl bg-slate-900/20 border border-slate-800/30 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-slate-400 font-medium">
-              <Coins className="h-4 w-4 text-cyan-400 animate-pulse" />
+          <div className="p-[12px] px-[16px] bg-[#080f1d] border-[0.5px] border-[#1a2a40] rounded-[10px] flex justify-between items-center text-xs">
+            <div className="flex items-center gap-[8px] text-[13px] text-[#7ab3d4]">
+              <Flame className="h-4 w-4 text-[#f97316] shrink-0" />
               <span>On-Chain Gas Estimation:</span>
             </div>
-            <div className="font-mono text-slate-300 font-semibold flex items-center gap-1.5">
-              <span>~{estimatedGas} ETH</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-500 font-mono">
+            <div className="flex items-center gap-[10px]">
+              <span className="text-[14px] font-medium text-[#cee9ff] font-mono">
+                ~{estimatedGas} ETH
+              </span>
+              <span className="text-[11px] px-[10px] py-[3px] bg-[#0c2a44] text-[#38bdf8] border-[0.5px] border-[#1e4976] rounded-[20px] font-mono">
                 {isPublic ? "upload(public)" : "upload(private)"}
               </span>
             </div>
           </div>
 
           {/* Trigger Buttons */}
-          <div className="flex gap-3">
+          <div className="grid grid-cols-[1fr_2fr] gap-[10px]">
             <button
+              type="button"
               onClick={() => setFile(null)}
-              className="flex-1 glass-btn-secondary py-3 text-sm"
+              className="bg-[#0a1929] text-[#7ab3d4] border-[0.5px] border-[#1a2a40] rounded-[8px] py-[13px] px-4 text-[14px] flex items-center justify-center gap-2 hover:bg-[#0d1f33] transition-colors duration-200"
             >
-              Clear
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span>Clear</span>
             </button>
             <button
+              type="button"
               onClick={startUpload}
-              className="flex-1 glass-btn-primary py-3 text-sm font-bold shadow-lg shadow-cyan-500/20 cursor-pointer"
+              className="bg-[#0ea5e9] text-white border-none rounded-[8px] py-[13px] px-4 text-[14px] font-medium flex items-center justify-center gap-[8px] hover:bg-[#0284c7] transition-colors duration-200"
             >
-              {isConnected ? "Secure & Upload File" : "Connect Wallet to Upload"}
+              <Shield className="h-4 w-4 shrink-0" />
+              <span>
+                {isConnected ? "Secure & Upload File" : "Connect Wallet & Upload Securely"}
+              </span>
             </button>
           </div>
         </div>
