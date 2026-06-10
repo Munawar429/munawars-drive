@@ -224,17 +224,6 @@ export default function FileUpload({ onUploadSuccess }) {
 
   return (
     <div className="glass-card max-w-2xl mx-auto p-8 glow-border">
-      {/* Upload Header */}
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-bold text-slate-100 flex items-center justify-center gap-2">
-          <Upload className="h-5 w-5 text-cyan-400 animate-pulse" />
-          Upload Encrypted Documents
-        </h3>
-        <p className="text-xs text-slate-400 mt-1">
-          Zero-knowledge storage. Encrypted natively in your browser before IPFS dispatching.
-        </p>
-      </div>
-
       {/* Drag & Drop Box */}
       {uploadPhase === "idle" && (
         <div
@@ -243,10 +232,10 @@ export default function FileUpload({ onUploadSuccess }) {
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={triggerInputClick}
-          className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+          className={`border-[1.5px] border-dashed rounded-[14px] bg-[#080f1e] p-8 flex flex-col items-center justify-center cursor-pointer transition-colors duration-200 ${
             dragActive
-              ? "border-cyan-400 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.15)]"
-              : "border-slate-800 hover:border-slate-700 hover:bg-slate-900/20"
+              ? "border-[#38bdf8]"
+              : "border-[#1e3a5f] hover:border-[#38bdf8]"
           }`}
         >
           <input
@@ -255,26 +244,49 @@ export default function FileUpload({ onUploadSuccess }) {
             onChange={handleFileChange}
             className="hidden"
           />
-          <div className="h-14 w-14 rounded-full bg-slate-950/60 flex items-center justify-center border border-slate-800 text-slate-400 mb-4 hover:scale-105 transition-transform duration-300">
-            <Upload className="h-6 w-6 text-cyan-400" />
+
+          {/* Zero-knowledge encrypted badge */}
+          <div className="flex items-center gap-2 bg-[#0c2a44] border border-[#1e4976]/50 rounded-[20px] px-[12px] py-[4px] text-[11px] text-[#38bdf8] mb-5 select-none">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#22d3ee] shrink-0" />
+            <span>Zero-knowledge encrypted before IPFS upload</span>
           </div>
+
+          <div className="h-[60px] w-[60px] rounded-full bg-[#0c2a44] border border-[#1e3a5f] flex items-center justify-center text-[#38bdf8] mb-4 hover:scale-105 transition-transform duration-300">
+            <Upload className="h-[26px] w-[26px]" />
+          </div>
+
           {file ? (
             <div className="text-center">
-              <p className="text-sm font-semibold text-slate-200 truncate max-w-sm">
+              <p className="text-sm font-semibold text-[#cee9ff] truncate max-w-sm">
                 {file.name}
               </p>
-              <p className="text-xs text-slate-400 mt-1 font-mono">
+              <p className="text-xs text-[#4a7fa5] mt-1 font-mono">
                 {formatBytes(file.size)}
               </p>
             </div>
           ) : (
-            <div className="text-center">
-              <p className="text-sm font-semibold text-slate-300">
-                Drag and drop your file here, or <span className="text-cyan-400 hover:underline">browse</span>
+            <div className="text-center flex flex-col items-center">
+              <h4 className="text-[17px] font-medium text-[#cee9ff] mb-1">
+                Upload Encrypted Documents
+              </h4>
+              <p className="text-[13px] text-[#4a7fa5] mb-5">
+                Your file is encrypted locally — never raw on-chain
               </p>
-              <p className="text-xs text-slate-500 mt-1.5">
-                Supports PDFs, images, code files, and archives up to 100MB
-              </p>
+              <button
+                type="button"
+                className="bg-[#0ea5e9] hover:bg-[#0284c7] text-white rounded-[8px] px-[22px] py-[9px] text-[13px] font-medium transition-colors duration-200 flex items-center gap-2 mb-5 cursor-pointer border-none shadow-md"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Select File
+              </button>
+              {/* Chips row */}
+              <div className="flex flex-row flex-wrap justify-center gap-2">
+                {["PDF", "Images", "ZIP", "Code", "Up to 100MB"].map((chip) => (
+                  <span key={chip} className="bg-[#0a1929] border border-[#1a2a40] rounded-[20px] px-[10px] py-[3px] text-[11px] text-[#4a7fa5] font-medium">
+                    {chip}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>

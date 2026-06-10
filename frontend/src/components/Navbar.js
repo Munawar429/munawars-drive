@@ -124,32 +124,39 @@ export default function Navbar({ activeTab }) {
   };
 
   return (
-    <header className="h-20 border-b border-slate-900 bg-slate-950/20 backdrop-blur-md flex items-center justify-between px-8 z-10">
+    <header className="h-20 border-b border-[#1a2a40] bg-[#060f1e] flex items-center justify-between px-8 z-10">
       {/* Title */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-100 tracking-tight">
-          {getTitle()}
-        </h2>
-        <p className="text-xs text-slate-400 font-medium">
-          Decentralized file indexing & end-to-end cryptographic shielding.
-        </p>
+      <div className="flex items-center gap-3">
+        {/* Brand Icon (Shield-Lock SVG) */}
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <rect x="9" y="11" width="6" height="4" rx="1"/>
+          <path d="M10 11V9a2 2 0 0 1 4 0v2"/>
+        </svg>
+        <div>
+          <h2 className="text-lg font-bold text-slate-100 tracking-tight leading-none mb-1">
+            Munawar's Drive
+          </h2>
+          <p className="text-xs text-[#4a7fa5] font-medium">
+            Decentralized · Zero-knowledge · IPFS
+          </p>
+        </div>
       </div>
 
       {/* Utilities */}
       <div className="flex items-center gap-4">
-        {/* Network status */}
+        {/* Network status pill badge next to wallet address */}
         {isConnected && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-xs font-semibold text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 ring-2 ring-cyan-400/20 animate-pulse" />
-            <span className="font-mono text-slate-300">{networkName}</span>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-[20px] bg-[#0a1929] border border-[#1e3a5f] text-[11px] font-bold text-[#38bdf8] select-none">
+            Sepolia Testnet
           </div>
         )}
 
         {/* Balance indicator */}
         {isConnected && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-xs font-semibold text-slate-300">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0a1929] border border-[#1a2a40] text-xs font-semibold text-slate-350">
             <span className="text-slate-500 font-medium">Balance:</span>
-            <span className="font-mono text-cyan-400">{parseFloat(balance).toFixed(4)} ETH</span>
+            <span className="font-mono text-[#38bdf8]">{parseFloat(balance).toFixed(4)} ETH</span>
           </div>
         )}
 
@@ -157,15 +164,16 @@ export default function Navbar({ activeTab }) {
         {authType === "wallet" || isConnected ? (
           <button
             onClick={handleCopyAddress}
-            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sm font-semibold text-slate-200 shadow-sm transition-all duration-200 cursor-pointer text-left"
+            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-[#0a1929] hover:bg-[#0d1f33] border border-[#1a2a40] hover:border-[#38bdf8]/40 text-sm font-semibold text-slate-200 shadow-sm transition-all duration-200 cursor-pointer text-left"
             title="Click to copy full wallet address"
           >
             {renderProfilePicture()}
-            <span className="font-mono">{ensName || formatAddress(walletAddress || user?.walletAddress)}</span>
+            <span className="h-2 w-2 rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee] shrink-0 animate-pulse" />
+            <span className="font-mono text-slate-305">{ensName || formatAddress(walletAddress || user?.walletAddress)}</span>
             {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+              <Check className="h-3.5 w-3.5 text-emerald-450 animate-pulse" />
             ) : (
-              <Copy className="h-3.5 w-3.5 text-slate-500 hover:text-cyan-400 transition-colors" />
+              <Copy className="h-3.5 w-3.5 text-[#4a7fa5] hover:text-[#22d3ee] transition-colors" />
             )}
           </button>
         ) : (

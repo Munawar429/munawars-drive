@@ -261,17 +261,17 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="glass-panel w-full max-w-md rounded-2xl overflow-hidden glow-border p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050d1a]/85 backdrop-blur-sm">
+      <div className="bg-[#0a1929] border border-[#1a2a40] w-full max-w-md rounded-2xl overflow-hidden p-6 shadow-2xl shadow-cyan-950/20 hover:shadow-[#22d3ee]/5 transition-all duration-200">
         {/* Modal Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-base font-bold text-slate-100">Share Access Control</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Authorize specific wallets to decrypt this private file.</p>
+            <p className="text-xs text-[#4a7fa5] mt-0.5">Authorize specific wallets to decrypt this private file.</p>
           </div>
           <button 
             onClick={onClose}
-            className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer border border-slate-800"
+            className="h-8 w-8 rounded-lg bg-[#080f1e] hover:bg-[#0a1929] text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer border border-[#1a2a40] hover:border-[#38bdf8]/40"
           >
             <X className="h-4 w-4" />
           </button>
@@ -291,7 +291,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         <form onSubmit={handleShare} className="space-y-4">
           {/* Target Input */}
           <div className="space-y-1.5">
-            <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
+            <label className="text-xs text-[#4a7fa5] font-bold uppercase tracking-wider block">
               Target Wallet Address or ENS Name
             </label>
             <input
@@ -310,24 +310,24 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
               </div>
             )}
             {!isResolvingEns && resolvedAddress && targetAddress.toLowerCase().endsWith(".eth") && (
-              <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-slate-950/60 p-2 rounded border border-emerald-500/10 truncate">
+              <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-[#050d1a] p-2 rounded border border-emerald-500/10 truncate">
                 🟢 Resolved: {resolvedAddress}
               </div>
             )}
           </div>
 
           {/* Warning description */}
-          <p className="text-[11px] text-slate-500 leading-normal bg-slate-950/40 p-3 rounded-lg border border-slate-900">
+          <p className="text-[11px] text-[#4a7fa5] leading-normal bg-[#080f1e] p-3 rounded-lg border border-[#1a2a40]">
             💡 <b>Decentralized Security Note:</b> This operation records the access permissions on the blockchain. The shared user will download the encrypted document from IPFS and decrypt it client-side.
           </p>
 
           {/* Gas fee cost estimation */}
-          <div className="p-3.5 rounded-lg bg-slate-900/30 border border-slate-800/40 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-slate-400 font-medium">
-              <Coins className="h-3.5 w-3.5 text-violet-400 animate-pulse" />
+          <div className="p-3.5 rounded-lg bg-[#080f1e] border border-[#1a2a40] flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-[#4a7fa5] font-medium">
+              <Coins className="h-3.5 w-3.5 text-violet-450 animate-pulse" />
               <span>Gas Estimation:</span>
             </div>
-            <span className="font-mono text-slate-300 font-semibold">~{estimatedGas} ETH</span>
+            <span className="font-mono text-slate-350 font-semibold">~{estimatedGas} ETH</span>
           </div>
 
           {/* Error notifications */}
@@ -338,7 +338,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
           )}
 
           {/* Actions Footer */}
-          <div className="flex gap-3 border-t border-slate-900/60 pt-4">
+          <div className="flex gap-3 border-t border-[#1a2a40] pt-4">
             <button
               type="button"
               onClick={onClose}
@@ -350,7 +350,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
             <button
               type="submit"
               disabled={isProcessing}
-              className="flex-1 glass-btn-primary py-2.5 text-xs font-bold shadow-lg shadow-violet-600/10 cursor-pointer"
+              className="flex-1 glass-btn-primary py-2.5 text-xs font-bold shadow-sm shadow-[#0ea5e9]/10 cursor-pointer"
             >
               {isProcessing ? (
                 <span className="flex items-center justify-center gap-1.5">
@@ -368,33 +368,33 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         </form>
 
         {/* Active Shares Section */}
-        <div className="mt-6 pt-5 border-t border-slate-900/60">
-          <h4 className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-cyan-400" />
+        <div className="mt-6 pt-5 border-t border-[#1a2a40]">
+          <h4 className="text-xs text-[#4a7fa5] font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-[#22d3ee]" />
             <span>Active Shares ({viewers.length})</span>
           </h4>
           
           {isLoadingViewers ? (
             <div className="flex items-center justify-center py-6 text-slate-500 gap-2 text-xs">
-              <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-[#22d3ee]" />
               <span>Loading authorized wallets...</span>
             </div>
           ) : viewers.length === 0 ? (
-            <div className="text-center py-6 bg-slate-950/30 border border-slate-900/40 rounded-xl text-slate-500 text-xs font-mono">
+            <div className="text-center py-6 bg-[#080f1e]/40 border border-[#1a2a40] rounded-xl text-[#4a7fa5] text-xs font-mono">
               Not shared with any wallets yet.
             </div>
           ) : (
             <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
               {viewers.map((viewer) => (
-                <div key={viewer.recipientAddress} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/40 border border-slate-900 hover:border-slate-800 transition-all text-xs">
-                  <div className="font-mono text-slate-300 truncate max-w-[240px]" title={viewer.recipientAddress}>
+                <div key={viewer.recipientAddress} className="flex items-center justify-between p-2.5 rounded-lg bg-[#080f1e] border border-[#1a2a40] hover:border-[#1e3a5f] transition-all text-xs">
+                  <div className="font-mono text-slate-200 truncate max-w-[240px]" title={viewer.recipientAddress}>
                     {viewer.recipientAddress.slice(0, 10)}...{viewer.recipientAddress.slice(-8)}
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRevoke(viewer.recipientAddress)}
                     disabled={isProcessing}
-                    className="text-[10px] font-bold text-rose-400 hover:text-rose-350 hover:bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 hover:border-rose-500/40 cursor-pointer disabled:opacity-50 transition-all"
+                    className="text-[10px] font-bold text-rose-450 hover:text-rose-350 hover:bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 hover:border-rose-500/40 cursor-pointer disabled:opacity-50 transition-all"
                   >
                     Revoke
                   </button>

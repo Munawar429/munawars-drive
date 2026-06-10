@@ -16,6 +16,7 @@ import axios from "axios";
 import { API_URL } from "../utils/config.js";
 import { 
   Folder, 
+  Image as ImageIcon,
   Search, 
   Grid, 
   List, 
@@ -37,8 +38,61 @@ import {
   ChevronRight,
   Share2,
   Shield,
-  Globe
+  Globe,
+  Database,
+  Users,
+  MoreVertical,
+  File
 } from "lucide-react";
+
+export function timeAgo(timestamp) {
+  if (!timestamp) return "";
+  const now = Date.now();
+  const dateMs = Number(timestamp) < 9999999999 ? Number(timestamp) * 1000 : Number(timestamp);
+  const diff = now - dateMs;
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return "Just now";
+}
+
+const getRecentFileIconStyles = (name, type) => {
+  const mime = type ? type.toLowerCase() : "";
+  const ext = name ? name.split(".").pop().toLowerCase() : "";
+
+  if (mime === "application/pdf" || ext === "pdf") {
+    return {
+      bg: "bg-[#3b0f0f]",
+      color: "text-[#f87171]",
+      icon: FileText
+    };
+  }
+  if (mime.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
+    return {
+      bg: "bg-[#042f2e]",
+      color: "text-[#2dd4bf]",
+      icon: ImageIcon
+    };
+  }
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
+    return {
+      bg: "bg-[#1e1b4b]",
+      color: "text-[#a78bfa]",
+      icon: Folder
+    };
+  }
+  return {
+    bg: "bg-[#0c2a44]",
+    color: "text-[#38bdf8]",
+    icon: File
+  };
+};
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -682,53 +736,143 @@ export default function Home() {
         <main className="flex-1 overflow-y-auto p-8 relative">
           
           {/* 1. MY DRIVE TAB */}
-          {activeTab === "drive" && (
-            <div className="space-y-8">
-              {/* Upload Drop Zone Card */}
-              <FileUpload onUploadSuccess={refreshDashboard} />
-
-              {/* Upgraded Dashboard Metrics Panel */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {/* Metric 1: Total Files */}
-                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                    <FileText className="h-5 w-5 animate-pulse" />
+          {activeTab === "drive" && (() => {
+            const recentFiles = files.slice().sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+            return (
+              <div className="space-y-8">
+                {/* 3-Column Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* Card 1: Total Files */}
+                  <div className="flex items-center gap-4 bg-[#0a1929] border border-[#1a2a40] rounded-[8px] p-[14px] px-[16px] transition-all duration-250 hover:border-[#38bdf8]/40">
+                    <div className="h-9 w-9 shrink-0 bg-[#0c2a44] rounded-[8px] flex items-center justify-center text-[#38bdf8]">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Total Files</span>
+                      <span className="text-base font-medium text-[#cee9ff]">{files.length}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Total Files</span>
-                    <span className="text-xl font-extrabold text-slate-200">{files.length}</span>
+
+                  {/* Card 2: Storage Capacity */}
+                  <div className="flex items-center gap-4 bg-[#0a1929] border border-[#1a2a40] rounded-[8px] p-[14px] px-[16px] transition-all duration-250 hover:border-[#2dd4bf]/40">
+                    <div className="h-9 w-9 shrink-0 bg-[#042f2e] rounded-[8px] flex items-center justify-center text-[#2dd4bf]">
+                      <Database className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Storage Used</span>
+                      <span className="text-base font-medium text-[#cee9ff]">
+                        {files.length > 0 ? formatBytes(files.reduce((acc, f) => acc + Number(f.fileSize || 0), 0)) : "0 MB"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Shared With */}
+                  <div className="flex items-center gap-4 bg-[#0a1929] border border-[#1a2a40] rounded-[8px] p-[14px] px-[16px] transition-all duration-250 hover:border-[#a78bfa]/40">
+                    <div className="h-9 w-9 shrink-0 bg-[#1e1b4b] rounded-[8px] flex items-center justify-center text-[#a78bfa]">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Shared With</span>
+                      <span className="text-base font-medium text-[#cee9ff]">
+                        {files.filter(f => f.isPublic).length + sharedFiles.length}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Metric 2: Storage Capacity */}
-                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                    <HardDrive className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Storage Used</span>
-                    <span className="text-xl font-extrabold text-slate-200">
-                      {formatBytes(files.reduce((acc, f) => acc + Number(f.fileSize || 0), 0))}
-                    </span>
-                  </div>
-                </div>
+                {/* Upload Drop Zone Card */}
+                <FileUpload onUploadSuccess={refreshDashboard} />
 
-                {/* Metric 3: Active Shares */}
-                <div className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 backdrop-blur-xl p-5 flex items-center gap-4 hover:border-cyan-500/20 transition-all duration-300 shadow-lg shadow-black/25">
-                  <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                    <Share2 className="h-5 w-5" />
+                {/* Recent Files Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[13px] font-medium text-[#7ab3d4] tracking-wider uppercase">
+                      Recent Files
+                    </h3>
+                    <button 
+                      onClick={() => {
+                        const listEl = document.getElementById("main-files-list");
+                        if (listEl) {
+                          listEl.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }}
+                      className="text-xs text-[#0ea5e9] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                    >
+                      View all →
+                    </button>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold font-mono tracking-wider text-slate-500 uppercase block">Active Shares</span>
-                    <span className="text-xl font-extrabold text-slate-200">
-                      {files.filter(f => f.isPublic).length + sharedFiles.length}
-                    </span>
-                  </div>
+
+                  {recentFiles.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {recentFiles.map((file) => {
+                        const iconStyles = getRecentFileIconStyles(file.fileName, file.fileType);
+                        const FileIcon = iconStyles.icon;
+                        const shortenedCid = file.ipfsHash ? `${file.ipfsHash.slice(0, 6)}...${file.ipfsHash.slice(-3)}` : "N/A";
+                        const sizeStr = formatBytes(file.fileSize);
+                        const timeStr = timeAgo(file.timestamp);
+
+                        return (
+                          <div 
+                            key={Number(file.id)}
+                            className="flex items-center justify-between bg-[#0a1929] border border-[#1a2a40] rounded-[8px] p-[10px] px-[14px] hover:bg-[#0d1f33] transition-colors duration-255"
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* File Icon container */}
+                              <div className={`h-9 w-9 rounded-[6px] flex items-center justify-center shrink-0 ${iconStyles.bg} ${iconStyles.color}`}>
+                                <FileIcon className="h-5 w-5" />
+                              </div>
+                              {/* File Name & Meta */}
+                              <div>
+                                <p className="text-[13px] font-medium text-[#cee9ff] truncate max-w-xs md:max-w-md" title={file.fileName}>
+                                  {file.fileName}
+                                </p>
+                                <p className="text-[11px] text-[#4a7fa5] mt-0.5">
+                                  {sizeStr} • {timeStr} • IPFS: <span className="font-mono">{shortenedCid}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                              {/* Encrypted badge */}
+                              {file.encryptedKey && file.encryptedKey !== "unencrypted" && (
+                                <span className="bg-[#042f2e] text-[#2dd4bf] border border-[#0f6e56]/50 rounded-[20px] text-[10px] px-[8px] py-[2px] font-semibold uppercase tracking-wider whitespace-nowrap">
+                                  Encrypted
+                                </span>
+                              )}
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 text-[#4a7fa5]">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFileForShare(file);
+                                    setIsShareOpen(true);
+                                  }}
+                                  className="p-1.5 hover:text-[#0ea5e9] hover:bg-[#0c2a44]/55 rounded transition-all cursor-pointer bg-transparent border-none"
+                                  title="Share File"
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  className="p-1.5 hover:text-[#cee9ff] hover:bg-[#0c2a44]/55 rounded transition-all cursor-pointer bg-transparent border-none"
+                                  title="More options"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 border border-[#1a2a40] rounded-[8px] bg-[#0a1929]/20">
+                      <p className="text-sm font-semibold text-[#4a7fa5]">No files uploaded yet</p>
+                    </div>
+                  )}
                 </div>
-              </div>
 
               {/* Controls bar */}
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-t border-slate-900 pt-6">
+              <div id="main-files-list" className="flex flex-col md:flex-row gap-4 items-center justify-between border-t border-[#1a2a40] pt-6">
                 {/* Search Bar & Dropdown Container */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl">
                   <div className="relative flex-1">
@@ -823,10 +967,10 @@ export default function Home() {
                   </div>
                 ) : (
                   // List View Table
-                  <div className="glass-panel rounded-xl overflow-hidden border border-slate-800/80">
+                  <div className="bg-[#0a1929] rounded-xl overflow-hidden border border-[#1a2a40] shadow-sm">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-950/80 border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                        <tr className="bg-[#080f1e] border-b border-[#1a2a40] text-[#4a7fa5] font-bold uppercase tracking-wider">
                           <th className="p-4">ID</th>
                           <th className="p-4">Name</th>
                           <th className="p-4">Size</th>
@@ -838,7 +982,7 @@ export default function Home() {
                       </thead>
                       <tbody>
                         {filteredFiles(files).map((file) => (
-                          <tr key={Number(file.id)} className="border-b border-slate-900/60 hover:bg-slate-900/10 transition-all">
+                          <tr key={Number(file.id)} className="border-b border-[#1a2a40]/60 hover:bg-[#0d1f33]/40 transition-all">
                             <td className="p-4 font-mono font-bold text-cyan-400">{Number(file.id)}</td>
                             <td className="p-4 font-bold text-slate-200 truncate max-w-xs">{file.fileName}</td>
                             <td className="p-4 font-mono text-slate-400">{formatBytes(Number(file.fileSize))}</td>
@@ -866,12 +1010,13 @@ export default function Home() {
                 </div>
               )}
             </div>
-          )}
+          );
+        })()}
 
           {/* 2. SHARED WITH ME TAB */}
           {activeTab === "shared" && (
             <div className="space-y-6">
-              <div className="p-4 rounded-xl bg-slate-900/25 border border-slate-800/40 text-xs text-slate-400">
+              <div className="p-4 rounded-xl bg-[#0a1929] border border-[#1a2a40] text-xs text-[#4a7fa5]">
                 📁 <b>Shared Workspace Ledger:</b> These are files whose access control lists (ACL) on the smart contract have granted decrypt rights to your connected wallet address.
               </div>
 
@@ -894,10 +1039,10 @@ export default function Home() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-16 border border-slate-900 rounded-xl bg-slate-950/30">
-                  <Share2 className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">No shared documents</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                <div className="text-center py-16 border border-[#1a2a40] rounded-xl bg-[#0a1929]/30">
+                  <Share2 className="h-10 w-10 text-[#4a7fa5] mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-200">No shared documents</p>
+                  <p className="text-xs text-[#4a7fa5] mt-1">
                     Files shared with your wallet address by other users will appear here.
                   </p>
                 </div>
@@ -908,7 +1053,7 @@ export default function Home() {
           {/* SHARED ACCESS MANAGEMENT TAB */}
           {activeTab === "shares-list" && (
             <div className="space-y-6">
-              <div className="p-4 rounded-xl bg-slate-900/25 border border-slate-800/40 text-xs text-slate-400">
+              <div className="p-4 rounded-xl bg-[#0a1929] border border-[#1a2a40] text-xs text-[#4a7fa5]">
                 👥 <b>Outbound Shares Control Panel:</b> View all wallets you have shared access with. You can revoke access from any previously shared recipient here.
               </div>
 
@@ -919,10 +1064,10 @@ export default function Home() {
                   ))}
                 </div>
               ) : allShares.length > 0 ? (
-                <div className="glass-panel rounded-xl overflow-hidden border border-slate-800/80">
+                <div className="bg-[#0a1929] rounded-xl overflow-hidden border border-[#1a2a40] shadow-sm">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-950/80 border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-[#080f1e] border-b border-[#1a2a40] text-[#4a7fa5] font-bold uppercase tracking-wider">
                         <th className="p-4">File Name</th>
                         <th className="p-4">Shared With</th>
                         <th className="p-4">Date Shared</th>
@@ -952,7 +1097,7 @@ export default function Home() {
                         return myOutboundShares.map((share, idx) => {
                           const file = fileMap[String(share.fileId)];
                           return (
-                            <tr key={idx} className="border-b border-slate-900/60 hover:bg-slate-900/10 transition-all">
+                            <tr key={idx} className="border-b border-[#1a2a40]/60 hover:bg-[#0d1f33]/40 transition-all">
                               <td className="p-4 font-bold text-slate-200 truncate max-w-xs">
                                 {file ? file.fileName : `File ID: ${share.fileId}`}
                               </td>
@@ -989,10 +1134,10 @@ export default function Home() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-16 border border-slate-900 rounded-xl bg-slate-950/30">
-                  <Share2 className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">No outbound shares</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                <div className="text-center py-16 border border-[#1a2a40] rounded-xl bg-[#0a1929]/30">
+                  <Share2 className="h-10 w-10 text-[#4a7fa5] mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-200">No outbound shares</p>
+                  <p className="text-xs text-[#4a7fa5] mt-1">
                     Files you share with other wallets will appear here.
                   </p>
                 </div>
@@ -1003,10 +1148,10 @@ export default function Home() {
           {/* 3. INTEGRITY CHECKER TAB */}
           {activeTab === "verify" && (
             <div className="max-w-2xl mx-auto space-y-6">
-              <div className="glass-card p-6 glow-border space-y-5">
+              <div className="bg-[#0a1929] border border-[#1a2a40] rounded-2xl p-6 hover:shadow-2xl hover:shadow-[#22d3ee]/5 transition-all duration-200 space-y-5">
                 <div className="text-center">
-                  <h3 className="text-base font-bold text-slate-200">On-Chain Document Verification</h3>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <h3 className="text-base font-bold text-slate-100">On-Chain Document Verification</h3>
+                  <p className="text-xs text-[#4a7fa5] mt-1">
                     Drop a local document. We compute its SHA-256 fingerprint in browser and query the blockchain record.
                   </p>
                 </div>
@@ -1018,10 +1163,10 @@ export default function Home() {
                   onDragLeave={handleDragVerify}
                   onDrop={handleDropVerify}
                   onClick={() => document.getElementById('verify-file-input').click()}
-                  className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${
+                  className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
                     dragActiveVerify
-                      ? "border-cyan-400 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.15)]"
-                      : "border-slate-800 hover:border-slate-700 hover:bg-slate-900/10"
+                      ? "border-[#22d3ee] bg-[#0c2a44]/30 shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]"
+                      : "border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:bg-[#080f1e]/40"
                   }`}
                 >
                   <input
@@ -1052,7 +1197,7 @@ export default function Home() {
 
                 {/* Index ID Selector */}
                 <div className="space-y-1.5">
-                  <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
+                  <label className="text-xs text-[#4a7fa5] font-bold uppercase tracking-wider block">
                     Registered Blockchain File ID
                   </label>
                   <input
@@ -1083,7 +1228,7 @@ export default function Home() {
 
               {/* Verification Result Shield */}
               {verifyResult && (
-                <div className={`border rounded-xl p-6 flex flex-col items-center text-center backdrop-blur-sm shadow-xl transition-all duration-500 ${
+                <div className={`border rounded-xl p-6 flex flex-col items-center text-center shadow-xl transition-all duration-200 ${
                   verifyResult.success
                     ? "border-emerald-500/20 bg-emerald-500/5"
                     : "border-rose-500/20 bg-rose-500/5"
@@ -1125,21 +1270,21 @@ export default function Home() {
           {activeTab === "vault" && (
             <div className="max-w-2xl mx-auto space-y-6">
               {/* Vault Intro */}
-              <div className="glass-card p-6 glow-border space-y-4">
+              <div className="bg-[#0a1929] border border-[#1a2a40] rounded-2xl p-6 hover:shadow-2xl hover:shadow-[#22d3ee]/5 transition-all duration-200 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <div className="h-9 w-9 rounded-lg bg-[#0c2a44] border border-[#1e3a5f] flex items-center justify-center text-[#22d3ee]">
                     <KeyRound className="h-4.5 w-4.5" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-200">Cryptographic Key Ledger</h3>
+                  <h3 className="text-base font-bold text-slate-100">Cryptographic Key Ledger</h3>
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Vault3 implements **Zero-Knowledge client-side encryption**. Every file is encrypted using a random AES-256 symmetric key. That key is then wrapped using your Master Vault Seed derived from your wallet signature or password hash.
                 </p>
 
                 {/* Master Seed Card */}
-                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-900 space-y-3">
+                <div className="p-4 rounded-xl bg-[#050d1a]/60 border border-[#1a2a40] space-y-3">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    <label className="text-[10px] text-[#4a7fa5] font-bold uppercase tracking-wider">
                       Your Vault 256-Bit Master Seed
                     </label>
                     <button
@@ -1154,8 +1299,8 @@ export default function Home() {
                     </button>
                   </div>
                   
-                  <div className="flex items-center justify-between gap-3 bg-slate-950 p-3 rounded-lg border border-slate-900/60 font-mono text-xs">
-                    <span className="truncate flex-1 text-slate-400 select-all max-w-[400px]">
+                  <div className="flex items-center justify-between gap-3 bg-[#080f1e] p-3 rounded-lg border border-[#1a2a40] font-mono text-xs">
+                    <span className="truncate flex-1 text-slate-350 select-all max-w-[400px]">
                       {showMasterSeed 
                         ? masterSeed 
                         : "0x••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••"}
@@ -1165,24 +1310,23 @@ export default function Home() {
                         navigator.clipboard.writeText(masterSeed);
                         alert("Vault Master Seed copied to clipboard!");
                       }}
-                      className="h-8 w-8 rounded bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                      className="h-8 w-8 rounded bg-[#0a1929] border border-[#1a2a40] hover:border-[#38bdf8]/40 hover:bg-[#0c2a44]/30 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
                       title="Copy Key"
                     >
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy className="h-3.5 w-3.5 text-[#4a7fa5] hover:text-[#22d3ee]" />
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Statistics Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="glass-card p-5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Vault Drive Files</span>
-                  <span className="text-2xl font-bold font-mono text-slate-200 mt-2 block">{files.length}</span>
+                <div className="bg-[#0a1929] border border-[#1a2a40] rounded-2xl p-5 hover:shadow-2xl hover:shadow-[#22d3ee]/5 transition-all duration-200">
+                  <span className="text-[10px] text-[#4a7fa5] font-bold uppercase tracking-wider block">Vault Drive Files</span>
+                  <span className="text-2xl font-bold font-mono text-slate-100 mt-2 block">{files.length}</span>
                 </div>
-                <div className="glass-card p-5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Shared Authorized Keys</span>
-                  <span className="text-2xl font-bold font-mono text-slate-200 mt-2 block">{sharedFiles.length}</span>
+                <div className="bg-[#0a1929] border border-[#1a2a40] rounded-2xl p-5 hover:shadow-2xl hover:shadow-[#22d3ee]/5 transition-all duration-200">
+                  <span className="text-[10px] text-[#4a7fa5] font-bold uppercase tracking-wider block">Shared Authorized Keys</span>
+                  <span className="text-2xl font-bold font-mono text-slate-100 mt-2 block">{sharedFiles.length}</span>
                 </div>
               </div>
             </div>
@@ -1210,10 +1354,10 @@ export default function Home() {
                   ))}
                 </div>
               ) : activityLogs.length > 0 ? (
-                <div className="glass-panel rounded-xl overflow-hidden border border-slate-800/80">
+                <div className="bg-[#0a1929] rounded-xl overflow-hidden border border-[#1a2a40] shadow-sm">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-950/80 border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-[#080f1e] border-b border-[#1a2a40] text-[#4a7fa5] font-bold uppercase tracking-wider">
                         <th className="p-4">Event Type</th>
                         <th className="p-4">Description</th>
                         <th className="p-4">Associated Document</th>
@@ -1231,7 +1375,7 @@ export default function Home() {
                         if (log.action === "INTEGRITY_CHECK") badgeColor = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
                         return (
-                          <tr key={log._id || log.id} className="border-b border-slate-900/60 hover:bg-slate-900/10 transition-all">
+                          <tr key={log._id || log.id} className="border-b border-[#1a2a40]/60 hover:bg-[#0d1f33]/40 transition-all">
                             <td className="p-4">
                               <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold ${badgeColor}`}>
                                 {log.action}
@@ -1262,9 +1406,9 @@ export default function Home() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-16 border border-slate-900 rounded-xl bg-slate-950/30">
-                  <Clock className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">Activity Ledger is empty</p>
+                <div className="text-center py-16 border border-[#1a2a40] rounded-xl bg-[#0a1929]/30">
+                  <Clock className="h-10 w-10 text-[#4a7fa5] mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-200">Activity Ledger is empty</p>
                 </div>
               )}
             </div>
