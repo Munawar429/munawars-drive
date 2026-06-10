@@ -10,7 +10,8 @@ import {
   LogOut, 
   Wallet,
   HardDrive,
-  Users
+  Users,
+  Shield
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
@@ -134,26 +135,29 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   };
 
   return (
-    <div className="w-72 bg-[#060f1e] border-r-[0.5px] border-[#1a2a40] p-[20px] px-[12px] flex flex-col gap-[4px] h-screen overflow-hidden">
+    <div className="w-72 bg-[#060f1e] border-r-[0.5px] border-[#1a2a40] p-[20px] px-[12px] flex flex-col h-screen overflow-hidden">
       {/* Brand Header */}
-      <div className="p-4 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-[#0c2a44] border-[0.5px] border-[#1e3a5f] flex items-center justify-center shadow-lg shadow-[#0ea5e9]/10">
-          <Folder className="h-5 w-5 text-[#22d3ee]" />
+      <div className="flex items-center gap-[12px] pb-[20px] border-b-[0.5px] border-[#1a2a40] mb-[16px]">
+        <div className="w-[40px] h-[40px] rounded-[10px] bg-gradient-to-br from-[#0ea5e9] to-[#22d3ee] flex items-center justify-center text-white shrink-0">
+          <Shield className="h-[20px] w-[20px]" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-100">
+          <h1 className="text-[16px] font-semibold text-[#e2f0ff] leading-none">
             Munawar's Drive
           </h1>
-          <span className="text-[10px] text-[#22d3ee] font-mono tracking-widest uppercase">
-            Decentralized
-          </span>
+          <div className="flex items-center gap-[5px] mt-[6px]">
+            <span className="h-[5px] w-[5px] rounded-full bg-[#22d3ee] shrink-0" />
+            <span className="text-[10px] text-[#22d3ee] font-mono tracking-[0.1em] uppercase font-semibold">
+              DECENTRALIZED
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 overflow-y-auto flex flex-col gap-[4px] px-1 py-4">
+      <nav className="overflow-y-auto flex flex-col gap-[4px] px-1">
         {/* Section 1: MAIN */}
-        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[8px] mb-[6px]">
+        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[10px] mb-[5px]">
           MAIN
         </div>
         {renderNavItem("drive")}
@@ -162,7 +166,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
         {/* Divider & Section 2: SECURITY */}
         <div className="h-[0.5px] bg-[#1a2a40] my-[10px] mx-[4px]" />
-        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[8px] mb-[6px]">
+        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[10px] mb-[5px]">
           SECURITY
         </div>
         {renderNavItem("verify")}
@@ -170,43 +174,45 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
         {/* Divider & Section 3: LOGS */}
         <div className="h-[0.5px] bg-[#1a2a40] my-[10px] mx-[4px]" />
-        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[8px] mb-[6px]">
+        <div className="text-[10px] font-medium text-[#2e4a66] tracking-[0.1em] uppercase px-[10px] mt-[10px] mb-[5px]">
           LOGS
         </div>
         {renderNavItem("logs")}
       </nav>
 
-      {/* Footer Profile */}
-      <div className="pt-4 border-t-[0.5px] border-[#1a2a40] bg-[#060f1e]/40 shrink-0">
-        <div className="p-3.5 rounded-xl bg-[#0a1929] border-[0.5px] border-[#1a2a40]">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-[#0c2a44] border-[0.5px] border-[#1e3a5f] flex items-center justify-center shrink-0">
-              {authType === "wallet" ? (
-                <Wallet className="h-4 w-4 text-[#38bdf8]" />
-              ) : (
-                <div className="h-2 w-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-[#4a7fa5] font-medium truncate uppercase tracking-wider">
-                {authType === "wallet" ? "Web3 Wallet" : "Authenticated Session"}
-              </p>
-              <p className="text-sm font-semibold text-slate-350 truncate font-mono">
-                {authType === "wallet" 
-                  ? formatAddress(user?.walletAddress) 
-                  : user?.email}
-              </p>
-            </div>
+      {/* Spacer to push wallet card to bottom */}
+      <div className="flex-1" />
+
+      {/* Wallet Card */}
+      <div className="bg-[#0a1929] border-[0.5px] border-[#1a2a40] rounded-[12px] p-[14px] mt-[12px] shrink-0">
+        <div className="flex items-center gap-[10px] mb-[12px]">
+          <div className="w-[36px] h-[36px] rounded-[9px] bg-[#0c2a44] border-[0.5px] border-[#1e4976] flex items-center justify-center shrink-0">
+            <Wallet className="h-[17px] w-[17px] text-[#38bdf8]" />
           </div>
-          
-          <button
-            onClick={logout}
-            className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-rose-500/5 hover:bg-rose-500/10 border-[0.5px] border-rose-500/20 hover:border-rose-500/30 text-rose-400 text-xs font-semibold py-2 transition-all duration-200 cursor-pointer"
-          >
-            <LogOut className="h-3 w-3" />
-            Disconnect Vault
-          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-[#4a7fa5] tracking-[0.08em] uppercase mb-[3px] font-medium">
+              {authType === "wallet" ? "WEB3 WALLET" : "SESSION"}
+            </p>
+            <p className="text-[13px] font-medium text-[#cee9ff] font-mono truncate">
+              {authType === "wallet" 
+                ? formatAddress(user?.walletAddress) 
+                : user?.email}
+            </p>
+          </div>
+          <div className="flex items-center gap-[5px] shrink-0">
+            <span className="h-[6px] w-[6px] rounded-full bg-[#22d3ee] animate-pulse" />
+            <span className="text-[11px] text-[#2dd4bf] font-medium">Live</span>
+          </div>
         </div>
+        
+        <button
+          type="button"
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-[7px] bg-[#1a0a0a] border-[0.5px] border-[#4b1c1c] rounded-[8px] p-[9px] text-[12px] font-medium text-[#f87171] hover:bg-[#2a0f0f] hover:border-[#f87171] transition-all duration-[180ms] cursor-pointer"
+        >
+          <LogOut className="h-[14px] w-[14px]" />
+          <span>Disconnect Vault</span>
+        </button>
       </div>
     </div>
   );
