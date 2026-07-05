@@ -135,7 +135,7 @@ export default function Navbar({ activeTab }) {
         </svg>
         <div>
           <h2 className="text-lg font-bold text-slate-100 tracking-tight leading-none mb-1">
-            Munawar's Drive
+            SevenSeas Drive
           </h2>
           <p className="text-xs text-[#4a7fa5] font-medium">
             Decentralized · Zero-knowledge · IPFS

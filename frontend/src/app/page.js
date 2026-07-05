@@ -440,7 +440,7 @@ export default function Home() {
               <Folder className="h-4.5 w-4.5 text-cyan-400 drop-shadow-[0_0_3px_rgba(6,182,212,0.8)]" />
             </div>
             <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-white bg-clip-text text-transparent tracking-tight">
-              Munawar's Drive
+              SevenSeas Drive
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-[11px] font-semibold text-slate-400 font-mono tracking-wider">
@@ -548,7 +548,7 @@ export default function Home() {
 
           {/* Footer Copyright */}
           <div className="text-[10px] text-slate-500 font-mono z-10">
-            © 2026 MUNAWAR'S DRIVE • DECENTRALIZED DATA LAYER
+            © 2026 SEVENSEAS DRIVE • DECENTRALIZED DATA LAYER
           </div>
         </div>
 

@@ -3,7 +3,7 @@ import { Web3Provider } from "../hooks/useWeb3.js";
 import { AuthProvider } from "../hooks/useAuth.js";
 
 export const metadata = {
-  title: "Munawar's Drive - Blockchain-Based Decentralized Storage",
+  title: "SevenSeas Drive - Blockchain-Based Decentralized Storage",
   description: "Securely upload, store, encrypt, share, and verify files using blockchain and IPFS.",
 };
 

@@ -143,7 +143,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         const pkResponse = await axios.get(`${API_URL}/auth/public-key/${normalizedTarget}`);
         recipientPubKey = pkResponse.data.publicKey;
       } catch (err) {
-        throw new Error(err.response?.data?.message || "Recipient has not registered their encryption key yet. Tell them to sign in to Munawar's Drive at least once!");
+        throw new Error(err.response?.data?.message || "Recipient has not registered their encryption key yet. Tell them to sign in to SevenSeas Drive at least once!");
       }
 
       // 2. Decrypt symmetric file key locally using owner's keys

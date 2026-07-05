@@ -143,7 +143,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         </div>
         <div>
           <h1 className="text-[16px] font-semibold text-[#e2f0ff] leading-none">
-            Munawar's Drive
+            SevenSeas Drive
           </h1>
           <div className="flex items-center gap-[5px] mt-[6px]">
             <span className="h-[5px] w-[5px] rounded-full bg-[#22d3ee] shrink-0" />
