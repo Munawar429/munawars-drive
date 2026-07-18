@@ -101,6 +101,7 @@ export default function Home() {
   
   // Auth Form State
   const [formError, setFormError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
   // File Lists State
@@ -164,6 +165,15 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update success/info message on wallet connection
+  useEffect(() => {
+    if (isConnected && !isAuthenticated) {
+      setInfoMessage("✨ Wallet Connected! Please sign the challenge below to unlock your secure vault.");
+    } else {
+      setInfoMessage("");
+    }
+  }, [isConnected, isAuthenticated]);
 
   // Fetch all user file listings
   const fetchDashboardData = async () => {
@@ -570,12 +580,16 @@ export default function Home() {
           {/* Compact Glassmorphic Login Card */}
           <div className="w-full max-w-md relative rounded-3xl border border-white/10 bg-[#0c1020]/75 backdrop-blur-xl p-8 sm:p-10 shadow-[0_0_50px_rgba(0,0,0,0.6)] glow-border z-10 animate-float-card">
             
-            {/* Error banner */}
-            {formError && (
+            {/* Alert banner */}
+            {formError ? (
               <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
                 ⚠️ {formError}
               </div>
-            )}
+            ) : infoMessage ? (
+              <div className="mb-6 p-3 rounded-xl bg-cyan-900/20 border border-cyan-500/50 text-cyan-400 text-xs text-center shadow-[0_0_15px_rgba(6,182,212,0.15)] animate-pulse">
+                {infoMessage}
+              </div>
+            ) : null}
 
             {/* Web3 Wallet Auth View */}
             <div className="text-center space-y-6">
