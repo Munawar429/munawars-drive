@@ -398,6 +398,9 @@ export const AuthProvider = ({ children }) => {
 
       // Step C: Sign the unique challenge message via Web3 Wallet
       console.log("🖋️ [Vault3 Auth] Requesting challenge signature...");
+      if (typeof window !== "undefined" && window.ethereum) {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+      }
       const signature = await web3Signer.signMessage(challenge);
       console.log("✅ [Vault3 Auth] Signature generated successfully:", signature);
 
