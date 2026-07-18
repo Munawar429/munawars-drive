@@ -50,7 +50,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("w3d_user");
     localStorage.removeItem("w3d_authtype");
     sessionStorage.removeItem("w3d_seed");
-    localStorage.removeItem("w3d_rsa_private_key");
 
     disconnectWeb3();
   }, [disconnectWeb3]);
