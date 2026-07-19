@@ -582,7 +582,7 @@ export default function Home() {
             
             {/* Alert banner */}
             {formError ? (
-              <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center">
+              <div className="mb-6 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-slate-100 text-xs text-center backdrop-blur-md shadow-[0_0_15px_rgba(244,63,94,0.15)]">
                 ⚠️ {formError}
               </div>
             ) : infoMessage ? (

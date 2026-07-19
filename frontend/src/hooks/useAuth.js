@@ -454,7 +454,24 @@ export const AuthProvider = ({ children }) => {
       console.error("❌ [Vault3 Auth] Wallet sign-in failed with error:", err);
       
       let errMsg = "Failed wallet authentication";
-      if (err.response) {
+
+      // Detect user rejection / signature cancellation (MetaMask, Rabby, WalletConnect, Ethers)
+      const isUserRejected =
+        err?.code === "ACTION_REJECTED" ||
+        err?.code === 4001 ||
+        err?.info?.error?.code === 4001 ||
+        (err?.message && (
+          err.message.includes("ACTION_REJECTED") ||
+          err.message.includes("user rejected") ||
+          err.message.includes("User denied") ||
+          err.message.includes("user cancel") ||
+          err.message.includes("4001") ||
+          err.message.includes("rejected")
+        ));
+
+      if (isUserRejected) {
+        errMsg = "Signature request cancelled. Please sign the message to access your vault.";
+      } else if (err.response) {
         errMsg = err.response.data?.message || `Server responded with status ${err.response.status}`;
         console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
       } else if (err.request) {
