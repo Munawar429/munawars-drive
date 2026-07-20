@@ -26,7 +26,7 @@ if (fs.existsSync(configPath)) {
 }
 
 // Connect to EVM Node provider (Dynamic auto-selection based on contract address)
-let rpcUrl = process.env.RPC_URL;
+let rpcUrl = process.env.RPC_URL || process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
 if (!rpcUrl) {
   const contractAddress = (Web3DriveConfig.address || "").toLowerCase();
   if (contractAddress === "0x5fbdb2315678afecb367f032d93f642f64180aa3" || contractAddress === "") {

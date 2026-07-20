@@ -472,14 +472,42 @@ export const AuthProvider = ({ children }) => {
 
       if (isUserRejected) {
         errMsg = "Signature request cancelled. Please sign the message to access your vault.";
-      } else if (err.response) {
-        errMsg = err.response.data?.message || `Server responded with status ${err.response.status}`;
-        console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
-      } else if (err.request) {
-        errMsg = `Connection Refused: Cannot reach the backend Express API at ${BACKEND_URL}. Please ensure the backend server is running.`;
-        console.error(`❌ [Vault3 Auth] Connection refused by the API server at ${BACKEND_URL}. Is it offline?`);
       } else {
-        errMsg = err.message;
+        const errString = typeof err === "object" ? JSON.stringify(err) : String(err);
+        const errMessage = err?.message || String(err);
+
+        const isRpcError =
+          err?.code === -32603 ||
+          err?.code === 429 ||
+          err?.info?.error?.code === -32603 ||
+          err?.info?.error?.code === 429 ||
+          errMessage.includes("429") ||
+          errMessage.includes("Too many request") ||
+          errMessage.includes("too many requests") ||
+          errMessage.includes("RPC Request failed") ||
+          errMessage.includes("RPC") ||
+          errMessage.includes("drpc") ||
+          errMessage.includes("Rate limit") ||
+          errString.includes("429") ||
+          errString.includes("Too many request") ||
+          errString.includes("rate limit");
+
+        if (isRpcError) {
+          errMsg = "Network congestion: The Sepolia RPC node is currently busy. Please wait a moment and try again.";
+        } else if (err.response) {
+          errMsg = err.response.data?.message || `Server responded with status ${err.response.status}`;
+          console.error(`❌ [Vault3 Auth] Backend returned status code ${err.response.status}:`, err.response.data);
+        } else if (err.request) {
+          errMsg = `Connection Refused: Cannot reach the backend Express API at ${BACKEND_URL}. Please ensure the backend server is running.`;
+          console.error(`❌ [Vault3 Auth] Connection refused by the API server at ${BACKEND_URL}. Is it offline?`);
+        } else {
+          // If error message starts with raw JSON or contract exception dump, sanitize it
+          if (errMessage.trim().startsWith("{") || errMessage.includes("coalesce error") || errMessage.length > 150) {
+            errMsg = "Network congestion: The Sepolia RPC node is currently busy. Please wait a moment and try again.";
+          } else {
+            errMsg = errMessage;
+          }
+        }
       }
 
       setError(errMsg);

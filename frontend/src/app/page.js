@@ -305,7 +305,25 @@ export default function Home() {
     try {
       await loginWithWallet();
     } catch (err) {
-      setFormError(err.message || "Web3 Wallet authorization failed.");
+      console.error("❌ Login Page Wallet Error:", err);
+      const rawMsg = err?.message || String(err);
+      
+      const isRpcError = 
+        rawMsg.includes("429") || 
+        rawMsg.includes("Too many request") || 
+        rawMsg.includes("too many requests") || 
+        rawMsg.includes("RPC Request failed") ||
+        rawMsg.includes("RPC") || 
+        rawMsg.includes("drpc") || 
+        rawMsg.includes("-32603") ||
+        rawMsg.includes("coalesce error") ||
+        rawMsg.trim().startsWith("{");
+
+      if (isRpcError) {
+        setFormError("Network congestion: The Sepolia RPC node is currently busy. Please wait a moment and try again.");
+      } else {
+        setFormError(rawMsg || "Web3 Wallet authorization failed.");
+      }
     }
     setAuthLoading(false);
   };
