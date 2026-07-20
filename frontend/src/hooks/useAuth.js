@@ -164,7 +164,8 @@ export const AuthProvider = ({ children }) => {
           if (seed) {
             console.log("📡 [Vault3 Auth] Registering existing local keys to backend registry...");
             const privateJwk = JSON.parse(localRsaKey);
-            const { d, p, q, dp, dq, qi, ...publicJwk } = privateJwk;
+            const { d, p, q, dp, dq, qi, key_ops, ...publicJwk } = privateJwk;
+            publicJwk.key_ops = ["encrypt"];
             const publicKeyJson = JSON.stringify(publicJwk);
             const encryptedPrivateKey = await wrapPrivateKey(localRsaKey, seed);
             

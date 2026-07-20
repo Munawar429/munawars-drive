@@ -256,7 +256,10 @@ export async function exportKey(key) {
  * Imports a Public RSA key from a JWK JSON string.
  */
 export async function importPublicKey(jwkString) {
-  const jwk = JSON.parse(jwkString);
+  const jwk = typeof jwkString === "string" ? JSON.parse(jwkString) : { ...jwkString };
+  if (jwk.key_ops) {
+    jwk.key_ops = ["encrypt"];
+  }
   return await window.crypto.subtle.importKey(
     "jwk",
     jwk,
@@ -270,7 +273,10 @@ export async function importPublicKey(jwkString) {
  * Imports a Private RSA key from a JWK JSON string.
  */
 export async function importPrivateKey(jwkString) {
-  const jwk = JSON.parse(jwkString);
+  const jwk = typeof jwkString === "string" ? JSON.parse(jwkString) : { ...jwkString };
+  if (jwk.key_ops) {
+    jwk.key_ops = ["decrypt"];
+  }
   return await window.crypto.subtle.importKey(
     "jwk",
     jwk,
