@@ -145,6 +145,7 @@ export default function Home() {
     masterSeed, 
     authType, 
     loginWithWallet,
+    authLoadingMessage,
     logout,
     logActivity 
   } = useAuth();
@@ -686,9 +687,9 @@ export default function Home() {
                 className="w-full h-12 rounded-xl animate-shimmer-sweep animate-hover-pulse text-white font-bold tracking-wider text-xs uppercase flex items-center justify-center gap-2 hover:scale-105 active:scale-[0.98] transition-all duration-300 border-none cursor-pointer"
               >
                 {authLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    Verifying Signature...
+                  <span className="flex items-center justify-center gap-2 text-center px-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-white flex-shrink-0" />
+                    <span>{authLoadingMessage || "Fetching secure challenge..."}</span>
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">

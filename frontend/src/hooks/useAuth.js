@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [authType, setAuthType] = useState(null); // 'email' or 'wallet'
   const [error, setError] = useState(null);
+  const [authLoadingMessage, setAuthLoadingMessage] = useState("");
 
   const { connectWallet, signer, disconnectWallet: disconnectWeb3, walletAddress } = useWeb3();
 
@@ -375,7 +376,12 @@ export const AuthProvider = ({ children }) => {
   const loginWithWallet = async () => {
     setError(null);
     setIsLoading(true);
+    setAuthLoadingMessage("Fetching secure challenge...");
     console.log("🚀 [Vault3 Auth] Initiating Web3 wallet login sequence...");
+
+    let coldStartTimer = setTimeout(() => {
+      setAuthLoadingMessage("Waking up secure server... this may take up to 50 seconds.");
+    }, 4000);
     
     try {
       // Step A: Connect wallet first via the useWeb3 context
@@ -395,6 +401,10 @@ export const AuthProvider = ({ children }) => {
       });
       const { challenge } = challengeResponse.data;
       console.log("✅ [Vault3 Auth] Received cryptographic challenge:", challenge);
+
+      // Server responded! Clear cold start timer and set text to "Verifying signature..."
+      clearTimeout(coldStartTimer);
+      setAuthLoadingMessage("Verifying signature...");
 
       // Step C: Sign the unique challenge message via Web3 Wallet
       console.log("🖋️ [Vault3 Auth] Requesting challenge signature...");
@@ -450,8 +460,11 @@ export const AuthProvider = ({ children }) => {
 
       setIsAuthenticated(true);
       setIsLoading(false);
+      setAuthLoadingMessage("");
       return profile;
     } catch (err) {
+      clearTimeout(coldStartTimer);
+      setAuthLoadingMessage("");
       console.error("❌ [Vault3 Auth] Wallet sign-in failed with error:", err);
       
       let errMsg = "Failed wallet authentication";
@@ -555,6 +568,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         authType,
         error,
+        authLoadingMessage,
         registerWithEmail,
         loginWithEmail,
         loginWithWallet,
