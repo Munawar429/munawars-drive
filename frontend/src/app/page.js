@@ -108,6 +108,7 @@ export default function Home() {
   const [files, setFiles] = useState([]);
   const [sharedFiles, setSharedFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [isFetchingData, setIsFetchingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
 
@@ -180,6 +181,7 @@ export default function Home() {
   const fetchDashboardData = async () => {
     if (!isAuthenticated) return;
     setLoadingFiles(true);
+    setIsFetchingData(true);
     try {
       console.log("📡 Fetching drive records from blockchain ledger...");
       
@@ -192,8 +194,10 @@ export default function Home() {
       setSharedFiles(sharedWithMe);
     } catch (e) {
       console.error("Failed to load dashboard files:", e);
+    } finally {
+      setLoadingFiles(false);
+      setIsFetchingData(false);
     }
-    setLoadingFiles(false);
   };
 
   // Fetch Outbound Shares
@@ -260,6 +264,8 @@ export default function Home() {
       fetchDashboardData();
       fetchActivityLogs();
       fetchSharesData();
+    } else {
+      setIsFetchingData(true);
     }
   }, [isAuthenticated, isConnected, contract]);
 
@@ -782,7 +788,13 @@ export default function Home() {
                     </div>
                     <div>
                       <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Total Files</span>
-                      <span className="text-base font-medium text-[#cee9ff]">{files.length}</span>
+                      <span className="text-base font-medium text-[#cee9ff]">
+                        {isFetchingData ? (
+                          <span className="inline-block w-12 h-4 bg-slate-800 rounded animate-pulse" />
+                        ) : (
+                          files.length
+                        )}
+                      </span>
                     </div>
                   </div>
 
@@ -794,7 +806,13 @@ export default function Home() {
                     <div>
                       <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Storage Used</span>
                       <span className="text-base font-medium text-[#cee9ff]">
-                        {files.length > 0 ? formatBytes(files.reduce((acc, f) => acc + Number(f.fileSize || 0), 0)) : "0 MB"}
+                        {isFetchingData ? (
+                          <span className="inline-block w-16 h-4 bg-slate-800 rounded animate-pulse" />
+                        ) : files.length > 0 ? (
+                          formatBytes(files.reduce((acc, f) => acc + Number(f.fileSize || 0), 0))
+                        ) : (
+                          "0 Bytes"
+                        )}
                       </span>
                     </div>
                   </div>
@@ -807,7 +825,11 @@ export default function Home() {
                     <div>
                       <span className="text-[11px] font-medium text-[#4a7fa5] block uppercase tracking-wider">Shared With</span>
                       <span className="text-base font-medium text-[#cee9ff]">
-                        {files.filter(f => f.isPublic).length + sharedFiles.length}
+                        {isFetchingData ? (
+                          <span className="inline-block w-10 h-4 bg-slate-800 rounded animate-pulse" />
+                        ) : (
+                          files.filter(f => f.isPublic).length + sharedFiles.length
+                        )}
                       </span>
                     </div>
                   </div>
@@ -835,7 +857,11 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {recentFiles.length > 0 ? (
+                  {isFetchingData ? (
+                    <div className="text-center py-10 border border-[#1a2a40] rounded-[8px] bg-[#0a1929]/20 animate-pulse">
+                      <p className="text-sm font-semibold text-[#4a7fa5]">Decrypting your vault data...</p>
+                    </div>
+                  ) : recentFiles.length > 0 ? (
                     <div className="space-y-2.5">
                       {recentFiles.map((file) => {
                         const iconStyles = getRecentFileIconStyles(file.fileName, file.fileType);
@@ -975,11 +1001,13 @@ export default function Home() {
               </div>
 
               {/* Grid / List display */}
-              {loadingFiles ? (
+              {isFetchingData || loadingFiles ? (
                 // Skeletons
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer" />
+                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer animate-pulse flex flex-col justify-center items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Decrypting Vault...</span>
+                    </div>
                   ))}
                 </div>
               ) : filteredFiles(files).length > 0 ? (
@@ -1053,10 +1081,12 @@ export default function Home() {
                 📁 <b>Shared Workspace Ledger:</b> These are files whose access control lists (ACL) on the smart contract have granted decrypt rights to your connected wallet address.
               </div>
 
-              {loadingFiles ? (
+              {isFetchingData || loadingFiles ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer" />
+                    <div key={i} className="relative rounded-2xl border border-white/5 bg-[#0c1020]/40 h-72 shimmer animate-pulse flex flex-col justify-center items-center gap-2">
+                      <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Decrypting Vault...</span>
+                    </div>
                   ))}
                 </div>
               ) : sharedFiles.length > 0 ? (

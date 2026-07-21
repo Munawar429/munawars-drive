@@ -125,6 +125,13 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     }
 
     const normalizedTarget = resolvedAddress.toLowerCase().trim();
+    
+    // Strict pre-validation of target address
+    if (!ethers.isAddress(normalizedTarget)) {
+      setErrorMessage("Invalid Ethereum address. Please check the resolved ENS or wallet address.");
+      return;
+    }
+
     const ownerAddress = user?.walletAddress?.toLowerCase();
 
     // Prevent sharing with oneself

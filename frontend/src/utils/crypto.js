@@ -406,6 +406,14 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
   const errMessage = err?.message || String(err);
   const shortMsg = err?.shortMessage || "";
 
+  // 0. Detect local Ethers parameter validation errors (like INVALID_ARGUMENT, invalid address, etc.)
+  if (err.code === "INVALID_ARGUMENT" || errMessage.includes("INVALID_ARGUMENT") || errMessage.includes("invalid address")) {
+    if (errMessage.includes("address")) {
+      return "Invalid Ethereum address. Please verify the recipient address.";
+    }
+    return err.shortMessage || err.reason || "Invalid argument provided. Please check input values.";
+  }
+
   // 1. Check if user cancelled / rejected the transaction in MetaMask/wallet
   const isUserRejected =
     err.code === "ACTION_REJECTED" ||
