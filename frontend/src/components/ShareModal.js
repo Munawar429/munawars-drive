@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { X, Send, Coins, ShieldCheck, Loader2, Users } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
-import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA } from "../utils/crypto.js";
+import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA, extractContractErrorReason } from "../utils/crypto.js";
 import { ethers } from "ethers";
 
 export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
@@ -210,7 +210,8 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
     } catch (err) {
       console.error("Failed to share file:", err);
-      setErrorMessage(err.message || "On-chain transaction failed. Ensure the address is correct and is not yourself.");
+      const exactReason = extractContractErrorReason(err, "On-chain transaction failed. Ensure the address is correct and is not yourself.");
+      setErrorMessage(exactReason);
     }
     
     setIsProcessing(false);
@@ -254,7 +255,8 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
     } catch (err) {
       console.error("Failed to revoke access:", err);
-      setErrorMessage(err.message || "Failed to revoke access on-chain.");
+      const exactReason = extractContractErrorReason(err, "Failed to revoke access on-chain.");
+      setErrorMessage(exactReason);
     } finally {
       setIsProcessing(false);
     }

@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { encryptFileClientSide, encryptFileClientSideWithRSA } from "../utils/crypto.js";
+import { encryptFileClientSide, encryptFileClientSideWithRSA, extractContractErrorReason } from "../utils/crypto.js";
 import { formatBytes } from "../utils/helpers.js";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
@@ -252,7 +252,8 @@ export default function FileUpload({ onUploadSuccess }) {
 
     } catch (err) {
       console.error("Upload failure:", err);
-      setErrorMessage(err.message || "An unexpected error occurred during upload.");
+      const exactReason = extractContractErrorReason(err, "An unexpected error occurred during upload.");
+      setErrorMessage(exactReason);
       setUploadPhase("error");
       
       await logActivity(
