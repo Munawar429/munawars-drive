@@ -227,7 +227,8 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     try {
       console.log(`⛓️ [Revoke] Initializing on-chain access revocation for file ID ${file.id} and recipient ${recipientAddress}...`);
       
-      const receipt = await revokeAccessOnChain(Number(file.id), recipientAddress);
+      const fileIdentifier = file.cid ? String(file.cid) : String(file.id);
+      const receipt = await revokeAccessOnChain(fileIdentifier, recipientAddress);
       console.log("🎉 On-chain revocation confirmed:", receipt.hash);
 
       console.log(`📡 [Revoke] Deleting shared key record from database...`);

@@ -237,9 +237,10 @@ export const Web3Provider = ({ children }) => {
     }
   };
 
-  // Helper to get bytes32 hash of a CID string
+  // Helper to get bytes32 hash of a CID/ID string
   const getCidHash = useCallback((ipfsHash) => {
-    return ethers.solidityPackedKeccak256(["string"], [ipfsHash]);
+    const safeString = typeof ipfsHash === "string" ? ipfsHash : String(ipfsHash ?? "");
+    return ethers.solidityPackedKeccak256(["string"], [safeString]);
   }, []);
 
   // 1. Upload File metadata on-chain
@@ -285,8 +286,9 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const cidHash = getCidHash(ipfsHash);
-      console.log(`⛓️ [Web3] Granting access for CID ${ipfsHash} (Hash: ${cidHash}) to recipient ${recipientAddress}`);
+      const safeString = typeof ipfsHash === "string" ? ipfsHash : String(ipfsHash ?? "");
+      const cidHash = getCidHash(safeString);
+      console.log(`⛓️ [Web3] Granting access for CID/ID ${safeString} (Hash: ${cidHash}) to recipient ${recipientAddress}`);
       const tx = await contract.grantAccess(cidHash, recipientAddress);
       const receipt = await tx.wait();
       setTxPending(false);
@@ -302,8 +304,9 @@ export const Web3Provider = ({ children }) => {
     if (!contract) throw new Error("Smart contract not instantiated");
     setTxPending(true);
     try {
-      const cidHash = getCidHash(ipfsHash);
-      console.log(`⛓️ [Web3] Revoking access for CID ${ipfsHash} (Hash: ${cidHash}), Recipient: ${recipientAddress}`);
+      const safeString = typeof ipfsHash === "string" ? ipfsHash : String(ipfsHash ?? "");
+      const cidHash = getCidHash(safeString);
+      console.log(`⛓️ [Web3] Revoking access for CID/ID ${safeString} (Hash: ${cidHash}), Recipient: ${recipientAddress}`);
       
       // Request explicit signature match for the overloaded bytes32 method signature
       const tx = await contract.getFunction("revokeAccess(bytes32,address)")(cidHash, recipientAddress);
