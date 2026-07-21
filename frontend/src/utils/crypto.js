@@ -399,69 +399,96 @@ export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwk
 /**
  * Helper function to extract exact smart contract revert reason or Web3 error string from Ethers.js (v6) error objects.
  */
-export function extractContractErrorReason(err, defaultFallback = "On-chain transaction failed.") {
+export function extractContractErrorReason(err, defaultFallback = "Transaction failed. Please check your wallet balance and network connection.") {
   if (!err) return defaultFallback;
+
+  const errString = typeof err === "object" ? JSON.stringify(err) : String(err);
+  const errMessage = err?.message || String(err);
+  const shortMsg = err?.shortMessage || "";
 
   // 1. Check if user cancelled / rejected the transaction in MetaMask/wallet
   const isUserRejected =
     err.code === "ACTION_REJECTED" ||
     err.code === 4001 ||
     err.info?.error?.code === 4001 ||
-    (err.message && (
-      err.message.includes("ACTION_REJECTED") ||
-      err.message.includes("user rejected") ||
-      err.message.includes("User denied") ||
-      err.message.includes("user cancel")
-    ));
+    errMessage.includes("ACTION_REJECTED") ||
+    errMessage.includes("user rejected") ||
+    errMessage.includes("User denied") ||
+    errMessage.includes("user cancel") ||
+    errMessage.includes("4001") ||
+    shortMsg.includes("ACTION_REJECTED") ||
+    shortMsg.includes("user rejected") ||
+    errString.includes("ACTION_REJECTED") ||
+    errString.includes("4001");
+
   if (isUserRejected) {
-    return "Transaction cancelled by user.";
+    return "Transaction cancelled by user. Please approve the MetaMask prompt to complete the upload.";
   }
 
-  // 2. Direct Ethers v6 contract revert reason property
+  // 2. Insufficient gas / funds / network connection errors
+  const isGasOrNetworkError =
+    err.code === "INSUFFICIENT_FUNDS" ||
+    errMessage.includes("INSUFFICIENT_FUNDS") ||
+    errMessage.includes("insufficient funds") ||
+    errMessage.includes("exceeds allowance") ||
+    errMessage.includes("out of gas") ||
+    shortMsg.includes("insufficient funds") ||
+    errString.includes("INSUFFICIENT_FUNDS");
+
+  if (isGasOrNetworkError) {
+    return "Transaction failed. Please check your wallet balance and network connection.";
+  }
+
+  // 3. RPC rate limit
+  if (errMessage.includes("429") || errMessage.includes("Too many request") || errMessage.includes("drpc") || errString.includes("429")) {
+    return "Network congestion: The Sepolia RPC node is currently busy. Please try again.";
+  }
+
+  // 4. Direct Ethers v6 contract revert reason property
   if (err.reason && typeof err.reason === "string") {
     let cleanReason = err.reason.replace(/^execution reverted:\s*/i, "").trim();
-    if (cleanReason) return cleanReason;
+    if (cleanReason && !cleanReason.startsWith("0x")) return cleanReason;
   }
 
-  // 3. Ethers v6 shortMessage property
+  // 5. Ethers v6 shortMessage property
   if (err.shortMessage && typeof err.shortMessage === "string") {
     let cleanShort = err.shortMessage.replace(/^execution reverted:\s*/i, "").trim();
     const match = cleanShort.match(/execution reverted(?::\s*"?([^"]+)"?)?/i);
     if (match && match[1]) {
-      return match[1].trim();
+      const extracted = match[1].trim();
+      if (extracted && !extracted.startsWith("0x")) return extracted;
     }
-    if (cleanShort && !cleanShort.includes("could not coalesce") && !cleanShort.startsWith("{")) {
+    if (cleanShort && !cleanShort.includes("could not coalesce") && !cleanShort.startsWith("{") && cleanShort.length < 150) {
       return cleanShort;
     }
   }
 
-  // 4. Ethers error info or response error message (e.g. err.info.error.message)
+  // 6. Ethers error info or response error message (e.g. err.info.error.message)
   const nestedMsg = err.info?.error?.message || err.error?.message || err.data?.message;
   if (nestedMsg && typeof nestedMsg === "string") {
     const match = nestedMsg.match(/execution reverted:\s*([^"'{}\n]+)/i) || nestedMsg.match(/revert:\s*([^"'{}\n]+)/i);
     if (match && match[1]) {
-      return match[1].trim();
+      const extracted = match[1].trim();
+      if (extracted && !extracted.startsWith("0x")) return extracted;
     }
   }
 
-  // 5. String message regex extraction
-  if (err.message && typeof err.message === "string") {
-    const msg = err.message;
-    const match = msg.match(/execution reverted:\s*"?([^"'{}\n]+)"?/i) || msg.match(/revert:\s*"?([^"'{}\n]+)"?/i);
-    if (match && match[1]) {
-      const extracted = match[1].trim();
-      if (extracted && !extracted.startsWith("0x")) {
-        return extracted;
-      }
+  // 7. String message regex extraction
+  const match = errMessage.match(/execution reverted:\s*"?([^"'{}\n]+)"?/i) || errMessage.match(/revert:\s*"?([^"'{}\n]+)"?/i);
+  if (match && match[1]) {
+    const extracted = match[1].trim();
+    if (extracted && !extracted.startsWith("0x")) {
+      return extracted;
     }
+  }
 
-    if (msg.includes("429") || msg.includes("Too many request") || msg.includes("drpc")) {
-      return "Network congestion: The Sepolia RPC node is currently busy. Please try again.";
-    }
+  // If errMessage or errString is raw JSON or long provider exception dump, sanitize it completely
+  if (errMessage.trim().startsWith("{") || errMessage.includes("coalesce error") || errMessage.length > 150 || errString.trim().startsWith("{")) {
+    return defaultFallback;
+  }
 
-    if (!msg.trim().startsWith("{") && !msg.includes("coalesce error") && msg.length < 150) {
-      return msg;
-    }
+  if (errMessage && typeof errMessage === "string" && errMessage.length < 150) {
+    return errMessage;
   }
 
   return defaultFallback;
