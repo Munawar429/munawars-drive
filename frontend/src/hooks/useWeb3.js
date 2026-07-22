@@ -165,22 +165,30 @@ export const Web3Provider = ({ children }) => {
   useEffect(() => {
     if (typeof window === "undefined" || !window.ethereum) return;
 
-    const handleAccountsChanged = async (accounts) => {
-      if (accounts.length === 0) {
-        disconnectWallet();
-      } else {
-        const browserProvider = new ethers.BrowserProvider(window.ethereum);
-        const web3Signer = await browserProvider.getSigner();
-        const userAddress = accounts[0];
+    let isMounted = true;
 
-        setWalletAddress(userAddress);
-        setSigner(web3Signer);
-        setProvider(browserProvider);
-        
-        const contractInst = getContractInstance(web3Signer);
-        setContract(contractInst);
-        
-        await updateBalance(userAddress, browserProvider);
+    const handleAccountsChanged = async (accounts) => {
+      try {
+        if (!accounts || accounts.length === 0) {
+          if (isMounted) disconnectWallet();
+        } else {
+          const browserProvider = new ethers.BrowserProvider(window.ethereum);
+          const web3Signer = await browserProvider.getSigner();
+          const userAddress = accounts[0];
+
+          if (isMounted) {
+            setWalletAddress(userAddress);
+            setSigner(web3Signer);
+            setProvider(browserProvider);
+            
+            const contractInst = getContractInstance(web3Signer);
+            setContract(contractInst);
+          }
+          
+          await updateBalance(userAddress, browserProvider);
+        }
+      } catch (err) {
+        console.warn("Error handling accountsChanged event:", err);
       }
     };
 
@@ -192,6 +200,7 @@ export const Web3Provider = ({ children }) => {
     window.ethereum.on("chainChanged", handleChainChanged);
 
     return () => {
+      isMounted = false;
       window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
       window.ethereum.removeListener("chainChanged", handleChainChanged);
     };
@@ -199,11 +208,12 @@ export const Web3Provider = ({ children }) => {
 
   // Silent Auto-connect if already authorized
   useEffect(() => {
+    let isMounted = true;
     const tryAutoConnect = async () => {
       if (typeof window !== "undefined" && window.ethereum) {
         try {
           const accounts = await window.ethereum.request({ method: "eth_accounts" });
-          if (accounts.length > 0) {
+          if (accounts && accounts.length > 0 && isMounted) {
             await connectWallet();
           }
         } catch (e) {
@@ -212,6 +222,9 @@ export const Web3Provider = ({ children }) => {
       }
     };
     tryAutoConnect();
+    return () => {
+      isMounted = false;
+    };
   }, [connectWallet]);
 
   /**

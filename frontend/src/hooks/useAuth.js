@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   // Restore session on bootstrap
   useEffect(() => {
+    let isMounted = true;
     const restoreSession = async () => {
       setError(null);
       const storedToken = localStorage.getItem("w3d_token");
@@ -131,21 +132,26 @@ export const AuthProvider = ({ children }) => {
             }
           }
 
-          setToken(storedToken);
-          setUser(parsedUser);
-          setAuthType(storedAuthType);
-          setMasterSeed(storedSeed);
-          setRsaPrivateKey(storedRsaKey);
-          setAuthHeader(storedToken);
-          setIsAuthenticated(true);
+          if (isMounted) {
+            setToken(storedToken);
+            setUser(parsedUser);
+            setAuthType(storedAuthType);
+            setMasterSeed(storedSeed);
+            setRsaPrivateKey(storedRsaKey);
+            setAuthHeader(storedToken);
+            setIsAuthenticated(true);
+          }
         } catch (e) {
           console.error("Session restore failed:", e);
-          logout();
+          if (isMounted) logout();
         }
       }
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     };
     restoreSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Helper to initialize RSA OAEP keypair for secure file sharing

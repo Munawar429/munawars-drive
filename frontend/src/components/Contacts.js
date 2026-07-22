@@ -36,7 +36,25 @@ export default function Contacts({ onSelectContactForShare }) {
   };
 
   useEffect(() => {
-    fetchContacts();
+    let isMounted = true;
+    const load = async () => {
+      if (!isAuthenticated) return;
+      setFetching(true);
+      try {
+        const res = await axios.get(`${API_URL}/contacts`);
+        if (res.data && res.data.contacts && isMounted) {
+          setContacts(res.data.contacts);
+        }
+      } catch (err) {
+        console.error("Failed to fetch contacts:", err);
+      } finally {
+        if (isMounted) setFetching(false);
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
   }, [isAuthenticated]);
 
   const handleAddContact = async (e) => {
