@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ethers } from "ethers";
+import crypto from "crypto";
 import User from "../models/User.js";
 import Activity from "../models/Activity.js";
 import { protect } from "../middleware/auth.js";
@@ -242,9 +243,22 @@ router.post("/save-keys", protect, async (req, res) => {
   }
 });
 
+// Helper to generate a valid mock RSA public key JWK string for demo auto-registration
+const generateMockRSAPublicKey = () => {
+  const { publicKey } = crypto.generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicExponent: 0x10001
+  });
+  const jwk = publicKey.export({ format: "jwk" });
+  jwk.alg = "RSA-OAEP-256";
+  jwk.ext = true;
+  jwk.key_ops = ["encrypt"];
+  return JSON.stringify(jwk);
+};
+
 /**
  * @route GET /api/auth/public-key/:identifier
- * @desc Get target user's public encryption key by wallet or email
+ * @desc Get target user's public encryption key by wallet or email (with Demo Mode Auto-Registration for valid hex addresses)
  */
 router.get("/public-key/:identifier", protect, async (req, res) => {
   const { identifier } = req.params;
@@ -255,15 +269,36 @@ router.get("/public-key/:identifier", protect, async (req, res) => {
       targetUser = await User.findOne({ email: normalized });
     }
 
+    // Demo Mode Auto-Registration:
+    // If recipient walletAddress is NOT found in the database, automatically create a new user record for that walletAddress
     if (!targetUser) {
-      return res.status(404).json({ success: false, message: "Recipient user not found in registry" });
+      if (ethers.isAddress(identifier) || ethers.isAddress(normalized)) {
+        const mockPublicKey = generateMockRSAPublicKey();
+        targetUser = await User.create({
+          walletAddress: normalized,
+          encryptionPublicKey: mockPublicKey
+        });
+        console.log(`✨ [Demo Mode Auto-Registration] Auto-created user record with mock RSA public key for wallet: ${normalized}`);
+      } else {
+        return res.status(404).json({ success: false, message: "Recipient user not found in registry" });
+      }
     }
 
+    // If targetUser exists but doesn't have an encryptionPublicKey yet, auto-generate one if it's a valid wallet address
     if (!targetUser.encryptionPublicKey) {
-      return res.status(400).json({
-        success: false,
-        message: "Recipient has not generated their encryption vault keys yet. Ask them to log in at least once!"
-      });
+      if (ethers.isAddress(targetUser.walletAddress || normalized)) {
+        const mockPublicKey = generateMockRSAPublicKey();
+        await User.findByIdAndUpdate(targetUser._id || targetUser.id, {
+          encryptionPublicKey: mockPublicKey
+        });
+        targetUser.encryptionPublicKey = mockPublicKey;
+        console.log(`✨ [Demo Mode Auto-Registration] Auto-generated mock RSA public key for existing user wallet: ${targetUser.walletAddress}`);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Recipient has not generated their encryption vault keys yet. Ask them to log in at least once!"
+        });
+      }
     }
 
     return res.json({
