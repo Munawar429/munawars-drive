@@ -96,12 +96,12 @@ export const Web3Provider = ({ children }) => {
                       decimals: 18,
                     },
                     rpcUrls: [
-                      process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || (
-                        targetChainId === 11155111 
-                          ? "https://ethereum-sepolia-rpc.publicnode.com" 
-                          : "http://127.0.0.1:8545"
-                      )
-                    ],
+                      process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
+                      targetChainId === 11155111 ? "https://ethereum-sepolia-rpc.publicnode.com" : "http://127.0.0.1:8545",
+                      targetChainId === 11155111 ? "https://rpc.sepolia.org" : null,
+                      targetChainId === 11155111 ? "https://sepolia.gateway.tenderly.co" : null,
+                      targetChainId === 11155111 ? "https://1rpc.io/sepolia" : null
+                    ].filter(Boolean),
                     blockExplorerUrls: [
                       targetChainId === 11155111 
                         ? "https://sepolia.etherscan.io" 

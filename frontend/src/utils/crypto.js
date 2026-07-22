@@ -458,10 +458,44 @@ export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwk
 export function extractContractErrorReason(err, defaultFallback = "Transaction failed. Please check your wallet balance and network connection.") {
   if (!err) return defaultFallback;
 
-  // Catch Web Crypto API DOMExceptions (e.g. OperationError, DataError)
   const errName = err?.name || "";
   const errMessage = err?.message || String(err);
+  const shortMsg = err?.shortMessage || "";
+  
+  // Safe stringification for non-Error object properties
+  let errString = "";
+  try {
+    errString = (err && typeof err === "object" && !(err instanceof Error)) ? JSON.stringify(err) : String(err);
+  } catch (e) {
+    errString = String(err);
+  }
 
+  // 1. Detect RPC node rate limits and wallet public node congestion (e.g. Rabby Wallet, Viem, dRPC, 429)
+  const isRpcRateLimited =
+    err?.code === 429 ||
+    err?.info?.error?.code === 429 ||
+    errMessage.includes("429") ||
+    errMessage.includes("Too many request") ||
+    errMessage.includes("too many requests") ||
+    errMessage.includes("RPC Request failed") ||
+    errMessage.includes("drpc") ||
+    errMessage.includes("Public endpoint rate limit") ||
+    errMessage.includes("rate limit") ||
+    errMessage.includes("Rate limit") ||
+    errMessage.includes("upgrade to paid plan") ||
+    errMessage.includes("viem") ||
+    shortMsg.includes("429") ||
+    shortMsg.includes("rate limit") ||
+    errString.includes("429") ||
+    errString.includes("drpc") ||
+    errString.includes("rate limit") ||
+    errString.includes("Public endpoint rate limit");
+
+  if (isRpcRateLimited) {
+    return "Network congestion: The public Sepolia RPC endpoint is rate-limited. Please wait a moment and try again.";
+  }
+
+  // 2. Catch Web Crypto API DOMExceptions (e.g. OperationError, DataError)
   if (
     errName === "OperationError" ||
     errName === "DataError" ||
@@ -475,14 +509,14 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return "Invalid or corrupted public key found for the recipient. They may need to re-register their account.";
   }
 
-  // 1. Direct string error handling
+  // 3. Direct string error handling
   if (typeof err === "string") {
     if (err.trim() && !err.trim().startsWith("{") && err.length < 300) {
       return err;
     }
   }
 
-  // 2. Plain JavaScript Error instance thrown by application logic (e.g. new Error("..."))
+  // 4. Plain JavaScript Error instance thrown by application logic (e.g. new Error("..."))
   if (err instanceof Error || (err.message && !err.code && !err.info && !err.data)) {
     const msg = err.message || String(err);
     if (msg && typeof msg === "string" && !msg.trim().startsWith("{") && !msg.includes("coalesce error") && msg.length < 300) {
@@ -490,17 +524,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     }
   }
 
-  const shortMsg = err?.shortMessage || "";
-  
-  // Safe stringification for non-Error object properties
-  let errString = "";
-  try {
-    errString = (err && typeof err === "object" && !(err instanceof Error)) ? JSON.stringify(err) : String(err);
-  } catch (e) {
-    errString = String(err);
-  }
-
-  // 3. Detect local Ethers parameter validation errors (like INVALID_ARGUMENT, invalid address, etc.)
+  // 5. Detect local Ethers parameter validation errors (like INVALID_ARGUMENT, invalid address, etc.)
   if (err.code === "INVALID_ARGUMENT" || errMessage.includes("INVALID_ARGUMENT") || errMessage.includes("invalid address")) {
     if (errMessage.includes("address")) {
       return "Invalid Ethereum address. Please verify the recipient address.";
@@ -508,7 +532,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return err.shortMessage || err.reason || "Invalid argument provided. Please check input values.";
   }
 
-  // 4. Check if user cancelled / rejected the transaction in MetaMask/wallet
+  // 6. Check if user cancelled / rejected the transaction in MetaMask/wallet
   const isUserRejected =
     err.code === "ACTION_REJECTED" ||
     err.code === 4001 ||
@@ -527,7 +551,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return "Transaction cancelled by user. Please approve the MetaMask prompt to complete the upload.";
   }
 
-  // 5. Insufficient gas / funds / network connection errors
+  // 7. Insufficient gas / funds / network connection errors
   const isGasOrNetworkError =
     err.code === "INSUFFICIENT_FUNDS" ||
     errMessage.includes("INSUFFICIENT_FUNDS") ||
@@ -539,11 +563,6 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
 
   if (isGasOrNetworkError) {
     return "Transaction failed. Please check your wallet balance and network connection.";
-  }
-
-  // 6. RPC rate limit
-  if (errMessage.includes("429") || errMessage.includes("Too many request") || errMessage.includes("drpc") || errString.includes("429")) {
-    return "Network congestion: The Sepolia RPC node is currently busy. Please try again.";
   }
 
   // 7. Direct Ethers v6 contract revert reason property
