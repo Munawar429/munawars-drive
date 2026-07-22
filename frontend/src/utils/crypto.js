@@ -402,11 +402,33 @@ export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwk
 export function extractContractErrorReason(err, defaultFallback = "Transaction failed. Please check your wallet balance and network connection.") {
   if (!err) return defaultFallback;
 
-  const errString = typeof err === "object" ? JSON.stringify(err) : String(err);
+  // 1. Direct string error handling
+  if (typeof err === "string") {
+    if (err.trim() && !err.trim().startsWith("{") && err.length < 300) {
+      return err;
+    }
+  }
+
+  // 2. Plain JavaScript Error instance thrown by application logic (e.g. new Error("..."))
+  if (err instanceof Error || (err.message && !err.code && !err.info && !err.data)) {
+    const msg = err.message || String(err);
+    if (msg && typeof msg === "string" && !msg.trim().startsWith("{") && !msg.includes("coalesce error") && msg.length < 300) {
+      return msg;
+    }
+  }
+
   const errMessage = err?.message || String(err);
   const shortMsg = err?.shortMessage || "";
+  
+  // Safe stringification for non-Error object properties
+  let errString = "";
+  try {
+    errString = (err && typeof err === "object" && !(err instanceof Error)) ? JSON.stringify(err) : String(err);
+  } catch (e) {
+    errString = String(err);
+  }
 
-  // 0. Detect local Ethers parameter validation errors (like INVALID_ARGUMENT, invalid address, etc.)
+  // 3. Detect local Ethers parameter validation errors (like INVALID_ARGUMENT, invalid address, etc.)
   if (err.code === "INVALID_ARGUMENT" || errMessage.includes("INVALID_ARGUMENT") || errMessage.includes("invalid address")) {
     if (errMessage.includes("address")) {
       return "Invalid Ethereum address. Please verify the recipient address.";
@@ -414,7 +436,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return err.shortMessage || err.reason || "Invalid argument provided. Please check input values.";
   }
 
-  // 1. Check if user cancelled / rejected the transaction in MetaMask/wallet
+  // 4. Check if user cancelled / rejected the transaction in MetaMask/wallet
   const isUserRejected =
     err.code === "ACTION_REJECTED" ||
     err.code === 4001 ||
@@ -433,7 +455,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return "Transaction cancelled by user. Please approve the MetaMask prompt to complete the upload.";
   }
 
-  // 2. Insufficient gas / funds / network connection errors
+  // 5. Insufficient gas / funds / network connection errors
   const isGasOrNetworkError =
     err.code === "INSUFFICIENT_FUNDS" ||
     errMessage.includes("INSUFFICIENT_FUNDS") ||
@@ -447,18 +469,18 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     return "Transaction failed. Please check your wallet balance and network connection.";
   }
 
-  // 3. RPC rate limit
+  // 6. RPC rate limit
   if (errMessage.includes("429") || errMessage.includes("Too many request") || errMessage.includes("drpc") || errString.includes("429")) {
     return "Network congestion: The Sepolia RPC node is currently busy. Please try again.";
   }
 
-  // 4. Direct Ethers v6 contract revert reason property
+  // 7. Direct Ethers v6 contract revert reason property
   if (err.reason && typeof err.reason === "string") {
     let cleanReason = err.reason.replace(/^execution reverted:\s*/i, "").trim();
     if (cleanReason && !cleanReason.startsWith("0x")) return cleanReason;
   }
 
-  // 5. Ethers v6 shortMessage property
+  // 8. Ethers v6 shortMessage property
   if (err.shortMessage && typeof err.shortMessage === "string") {
     let cleanShort = err.shortMessage.replace(/^execution reverted:\s*/i, "").trim();
     const match = cleanShort.match(/execution reverted(?::\s*"?([^"]+)"?)?/i);
@@ -466,12 +488,12 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
       const extracted = match[1].trim();
       if (extracted && !extracted.startsWith("0x")) return extracted;
     }
-    if (cleanShort && !cleanShort.includes("could not coalesce") && !cleanShort.startsWith("{") && cleanShort.length < 150) {
+    if (cleanShort && !cleanShort.includes("could not coalesce") && !cleanShort.startsWith("{") && cleanShort.length < 300) {
       return cleanShort;
     }
   }
 
-  // 6. Ethers error info or response error message (e.g. err.info.error.message)
+  // 9. Ethers error info or response error message (e.g. err.info.error.message)
   const nestedMsg = err.info?.error?.message || err.error?.message || err.data?.message;
   if (nestedMsg && typeof nestedMsg === "string") {
     const match = nestedMsg.match(/execution reverted:\s*([^"'{}\n]+)/i) || nestedMsg.match(/revert:\s*([^"'{}\n]+)/i);
@@ -481,7 +503,7 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     }
   }
 
-  // 7. String message regex extraction
+  // 10. String message regex extraction
   const match = errMessage.match(/execution reverted:\s*"?([^"'{}\n]+)"?/i) || errMessage.match(/revert:\s*"?([^"'{}\n]+)"?/i);
   if (match && match[1]) {
     const extracted = match[1].trim();
@@ -490,12 +512,8 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     }
   }
 
-  // If errMessage or errString is raw JSON or long provider exception dump, sanitize it completely
-  if (errMessage.trim().startsWith("{") || errMessage.includes("coalesce error") || errMessage.length > 150 || errString.trim().startsWith("{")) {
-    return defaultFallback;
-  }
-
-  if (errMessage && typeof errMessage === "string" && errMessage.length < 150) {
+  // 11. Clean message fallback
+  if (errMessage && typeof errMessage === "string" && !errMessage.trim().startsWith("{") && !errMessage.includes("coalesce error") && errMessage.length < 300) {
     return errMessage;
   }
 

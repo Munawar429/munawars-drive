@@ -76,18 +76,27 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       if (input.toLowerCase().endsWith(".eth")) {
         setIsResolvingEns(true);
         try {
-          if (typeof window !== "undefined" && window.ethereum) {
+          let address = null;
+          // 1. Try public Mainnet RPC provider (ENS registry is on Mainnet)
+          try {
+            const mainnetProvider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+            address = await mainnetProvider.resolveName(input);
+          } catch (mErr) {
+            console.warn("Mainnet RPC ENS lookup failed, trying window.ethereum fallback:", mErr);
+          }
+
+          // 2. Fallback to browser provider
+          if (!address && typeof window !== "undefined" && window.ethereum) {
             const provider = new ethers.BrowserProvider(window.ethereum);
-            console.log(`🔍 [ENS] Resolving ENS name: ${input}...`);
-            const address = await provider.resolveName(input);
-            if (address) {
-              setResolvedAddress(address);
-              console.log(`✅ [ENS] Resolved ${input} to: ${address}`);
-            } else {
-              setErrorMessage("Invalid ENS name or address.");
-            }
+            console.log(`🔍 [ENS] Resolving ENS name via browser provider: ${input}...`);
+            address = await provider.resolveName(input);
+          }
+
+          if (address) {
+            setResolvedAddress(address);
+            console.log(`✅ [ENS] Resolved ${input} to: ${address}`);
           } else {
-            setErrorMessage("Ethereum provider not found.");
+            setErrorMessage("Invalid ENS name or address.");
           }
         } catch (e) {
           console.error("ENS Resolution Error:", e);
@@ -119,11 +128,41 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       return;
     }
 
-    const finalAddress = (resolvedAddress || targetAddress || "").trim();
+    let finalAddress = (resolvedAddress || targetAddress || "").trim();
 
     if (!finalAddress) {
       setErrorMessage("Invalid ENS name or address.");
       return;
+    }
+
+    // On-demand ENS resolution if user clicked share before debounced resolution finished
+    if (finalAddress.toLowerCase().endsWith(".eth") && !ethers.isAddress(finalAddress)) {
+      setIsProcessing(true);
+      try {
+        let ensAddress = null;
+        try {
+          const mainnetProvider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+          ensAddress = await mainnetProvider.resolveName(finalAddress);
+        } catch (e) {
+          if (typeof window !== "undefined" && window.ethereum) {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            ensAddress = await provider.resolveName(finalAddress);
+          }
+        }
+
+        if (ensAddress) {
+          finalAddress = ensAddress;
+          setResolvedAddress(ensAddress);
+        } else {
+          setErrorMessage("Could not resolve ENS name. Please check the domain or enter a 0x address.");
+          setIsProcessing(false);
+          return;
+        }
+      } catch (ensErr) {
+        setErrorMessage("Failed to resolve ENS name. Please check your network connection.");
+        setIsProcessing(false);
+        return;
+      }
     }
 
     // Strict pre-validation of target address
