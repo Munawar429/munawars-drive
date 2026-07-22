@@ -10,6 +10,7 @@ import FileUpload from "../components/FileUpload.js";
 import FileCard from "../components/FileCard.js";
 import FilePreviewModal from "../components/FilePreviewModal.js";
 import ShareModal from "../components/ShareModal.js";
+import Contacts from "../components/Contacts.js";
 import { computeFileHash } from "../utils/crypto.js";
 import { formatBytes, formatDate } from "../utils/helpers.js";
 import axios from "axios";
@@ -1207,6 +1208,9 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* ADDRESS BOOK & CONTACTS TAB */}
+          {activeTab === "contacts" && <Contacts />}
 
           {/* 3. INTEGRITY CHECKER TAB */}
           {activeTab === "verify" && (

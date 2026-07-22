@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useWeb3 } from "../hooks/useWeb3.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { X, Send, Coins, ShieldCheck, Loader2, Users } from "lucide-react";
+import { X, Send, Coins, ShieldCheck, Loader2, Users, BookUser } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../utils/config.js";
 import { extractFileKeyBytes, encryptFileKeyWithRSA, decryptFileKeyWithRSA, extractContractErrorReason } from "../utils/crypto.js";
@@ -18,6 +18,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
 
   const [resolvedAddress, setResolvedAddress] = useState("");
   const [isResolvingEns, setIsResolvingEns] = useState(false);
+  const [userContacts, setUserContacts] = useState([]);
 
   const { shareFileOnChain, revokeAccessOnChain, estimateGasFees } = useWeb3();
   const { logActivity, masterSeed, user } = useAuth();
@@ -37,6 +38,17 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       console.error("Failed to fetch viewers:", e);
     }
     setIsLoadingViewers(false);
+  };
+
+  const fetchUserContacts = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/contacts`);
+      if (res.data && res.data.contacts) {
+        setUserContacts(res.data.contacts);
+      }
+    } catch (e) {
+      console.warn("Could not fetch contacts in ShareModal:", e);
+    }
   };
 
   useEffect(() => {
@@ -62,6 +74,7 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
     setSuccessMessage("");
 
     fetchViewers();
+    fetchUserContacts();
   }, [isOpen, file, estimateGasFees]);
 
   // Resolve ENS name if targetAddress matches the pattern
@@ -362,6 +375,34 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
             {!isResolvingEns && resolvedAddress && targetAddress.toLowerCase().endsWith(".eth") && (
               <div className="text-[10px] text-emerald-400 font-mono mt-1 bg-[#050d1a] p-2 rounded border border-emerald-500/10 truncate">
                 🟢 Resolved: {resolvedAddress}
+              </div>
+            )}
+
+            {/* Select from Address Book / Contacts Section */}
+            {userContacts && userContacts.length > 0 && (
+              <div className="pt-2">
+                <label className="text-[10px] text-[#4a7fa5] font-semibold uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                  <BookUser className="h-3 w-3 text-cyan-400" />
+                  <span>Select From Saved Contacts</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                  {userContacts.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setTargetAddress(c.address);
+                        setResolvedAddress(c.address);
+                        setErrorMessage("");
+                      }}
+                      className="bg-[#0c2a44] hover:bg-[#10385c] border border-[#1e4976]/60 text-[#38bdf8] hover:text-white rounded-full px-3 py-1 text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+                      title={`${c.name} (${c.address})`}
+                    >
+                      <span className="font-bold">{c.name}:</span>
+                      <span className="font-mono text-[10px] opacity-80">{c.address.slice(0, 6)}...{c.address.slice(-4)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

@@ -11,7 +11,8 @@ import {
   Wallet,
   HardDrive,
   Users,
-  Shield
+  Shield,
+  BookUser
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth.js";
 import { useWeb3 } from "../hooks/useWeb3.js";
@@ -65,6 +66,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: "drive", label: "My Drive", icon: HardDrive },
     { id: "shared", label: "Shared with Me", icon: Share2 },
     { id: "shares-list", label: "Shared Access", icon: Users },
+    { id: "contacts", label: "Address Book", icon: BookUser },
     { id: "verify", label: "Integrity Checker", icon: ShieldCheck },
     { id: "vault", label: "Secure Key Vault", icon: KeyRound },
     { id: "logs", label: "Activity Audit Logs", icon: Activity },
@@ -163,6 +165,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         {renderNavItem("drive")}
         {renderNavItem("shared")}
         {renderNavItem("shares-list")}
+        {renderNavItem("contacts")}
 
         {/* Divider & Section 2: SECURITY */}
         <div className="h-[0.5px] bg-[#1a2a40] my-[10px] mx-[4px]" />

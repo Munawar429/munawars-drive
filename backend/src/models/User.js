@@ -26,7 +26,15 @@ const UserSchema = new mongoose.Schema(
     },
     encryptedPrivateKey: {
       type: String // Wrapped RSA private key (encrypted with user's masterSeed)
-    }
+    },
+    addressBook: [
+      {
+        id: { type: String },
+        name: { type: String, required: true },
+        address: { type: String, required: true, lowercase: true },
+        createdAt: { type: String }
+      }
+    ]
   },
   { timestamps: true }
 );

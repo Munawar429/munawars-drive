@@ -7,6 +7,7 @@ import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import ipfsRoutes from "./routes/ipfs.js";
 import activityRoutes from "./routes/activity.js";
+import contactsRoutes from "./routes/contacts.js";
 
 // Load Environment variables
 dotenv.config();
@@ -68,6 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/ipfs", ipfsRoutes);
 app.use("/api/activity", activityRoutes);
+app.use("/api/contacts", contactsRoutes);
 
 // Base Route
 app.get("/", (req, res) => {
