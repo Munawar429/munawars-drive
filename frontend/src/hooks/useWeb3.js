@@ -351,14 +351,33 @@ export const Web3Provider = ({ children }) => {
 
   // 7. Fetch owned files
   const getMyFilesFromChain = async () => {
-    if (!contract || !provider) return [];
+    let activeContract = contract;
+    let activeProvider = provider;
+
+    if (!activeContract || !activeProvider) {
+      if (typeof window !== "undefined" && window.ethereum) {
+        try {
+          activeProvider = new ethers.BrowserProvider(window.ethereum);
+          const activeSigner = await activeProvider.getSigner();
+          activeContract = getContractInstance(activeSigner);
+        } catch (e) {
+          console.warn("Unable to auto-create provider/contract for getMyFilesFromChain:", e);
+          return [];
+        }
+      } else {
+        return [];
+      }
+    }
+
+    if (!activeContract || !activeProvider) return [];
+
     try {
-      const code = await provider.getCode(contractAddress);
+      const code = await activeProvider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
         console.warn("⚠️ Smart contract is not active on this network.");
         return [];
       }
-      const rawFiles = await contract.getMyFiles();
+      const rawFiles = await activeContract.getMyFiles();
       return Array.from(rawFiles).map(f => ({
         id: Number(f.id),
         ipfsHash: f.ipfsHash,
@@ -380,13 +399,32 @@ export const Web3Provider = ({ children }) => {
 
   // 8. Fetch shared files
   const getSharedFilesFromChain = async () => {
-    if (!contract || !provider) return [];
+    let activeContract = contract;
+    let activeProvider = provider;
+
+    if (!activeContract || !activeProvider) {
+      if (typeof window !== "undefined" && window.ethereum) {
+        try {
+          activeProvider = new ethers.BrowserProvider(window.ethereum);
+          const activeSigner = await activeProvider.getSigner();
+          activeContract = getContractInstance(activeSigner);
+        } catch (e) {
+          console.warn("Unable to auto-create provider/contract for getSharedFilesFromChain:", e);
+          return [];
+        }
+      } else {
+        return [];
+      }
+    }
+
+    if (!activeContract || !activeProvider) return [];
+
     try {
-      const code = await provider.getCode(contractAddress);
+      const code = await activeProvider.getCode(contractAddress);
       if (!code || code === "0x" || code === "0x0" || code === "0x00") {
         return [];
       }
-      const rawFiles = await contract.getSharedWithMe();
+      const rawFiles = await activeContract.getSharedWithMe();
       return Array.from(rawFiles).map(f => ({
         id: Number(f.id),
         ipfsHash: f.ipfsHash,
