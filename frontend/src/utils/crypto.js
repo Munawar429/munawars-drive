@@ -256,34 +256,74 @@ export async function exportKey(key) {
  * Imports a Public RSA key from a JWK JSON string.
  */
 export async function importPublicKey(jwkString) {
-  const jwk = typeof jwkString === "string" ? JSON.parse(jwkString) : { ...jwkString };
-  if (jwk.key_ops) {
-    jwk.key_ops = ["encrypt"];
+  if (!jwkString) {
+    throw new Error("Invalid or corrupted public key found for the recipient. They may need to re-register their account.");
   }
-  return await window.crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "RSA-OAEP", hash: "SHA-256" },
-    true,
-    ["encrypt"]
-  );
+  try {
+    let cleanJwk = jwkString;
+    if (typeof cleanJwk === "string") {
+      cleanJwk = cleanJwk.trim();
+      cleanJwk = JSON.parse(cleanJwk);
+    } else {
+      cleanJwk = { ...cleanJwk };
+    }
+
+    if (!cleanJwk || typeof cleanJwk !== "object" || !cleanJwk.kty || cleanJwk.kty !== "RSA") {
+      throw new Error("Invalid RSA public key structure.");
+    }
+
+    if (cleanJwk.key_ops) {
+      cleanJwk.key_ops = ["encrypt"];
+    }
+
+    return await window.crypto.subtle.importKey(
+      "jwk",
+      cleanJwk,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      true,
+      ["encrypt"]
+    );
+  } catch (e) {
+    console.error("Web Crypto API importPublicKey error:", e);
+    throw new Error("Invalid or corrupted public key found for the recipient. They may need to re-register their account.");
+  }
 }
 
 /**
  * Imports a Private RSA key from a JWK JSON string.
  */
 export async function importPrivateKey(jwkString) {
-  const jwk = typeof jwkString === "string" ? JSON.parse(jwkString) : { ...jwkString };
-  if (jwk.key_ops) {
-    jwk.key_ops = ["decrypt"];
+  if (!jwkString) {
+    throw new Error("Local RSA Private Key not found in browser storage. Please log in again.");
   }
-  return await window.crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "RSA-OAEP", hash: "SHA-256" },
-    true,
-    ["decrypt"]
-  );
+  try {
+    let cleanJwk = jwkString;
+    if (typeof cleanJwk === "string") {
+      cleanJwk = cleanJwk.trim();
+      cleanJwk = JSON.parse(cleanJwk);
+    } else {
+      cleanJwk = { ...cleanJwk };
+    }
+
+    if (!cleanJwk || typeof cleanJwk !== "object" || !cleanJwk.kty || cleanJwk.kty !== "RSA") {
+      throw new Error("Invalid RSA private key structure.");
+    }
+
+    if (cleanJwk.key_ops) {
+      cleanJwk.key_ops = ["decrypt"];
+    }
+
+    return await window.crypto.subtle.importKey(
+      "jwk",
+      cleanJwk,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      true,
+      ["decrypt"]
+    );
+  } catch (e) {
+    console.error("Web Crypto API importPrivateKey error:", e);
+    throw new Error("Local RSA Private Key is corrupted or invalid. Please log in again.");
+  }
 }
 
 /**
@@ -373,27 +413,43 @@ export async function extractFileKeyBytes(encryptedKeyHex, masterSeedHex) {
  * Encrypts a raw file key with a recipient's public RSA key.
  */
 export async function encryptFileKeyWithRSA(fileKeyRawBytes, recipientPublicKeyJwkString) {
-  const publicKey = await importPublicKey(recipientPublicKeyJwkString);
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: "RSA-OAEP" },
-    publicKey,
-    fileKeyRawBytes
-  );
-  return bytesToHex(new Uint8Array(encrypted));
+  try {
+    const publicKey = await importPublicKey(recipientPublicKeyJwkString);
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: "RSA-OAEP" },
+      publicKey,
+      fileKeyRawBytes
+    );
+    return bytesToHex(new Uint8Array(encrypted));
+  } catch (e) {
+    console.error("Web Crypto API encryptFileKeyWithRSA error:", e);
+    if (e.message && e.message.includes("Invalid or corrupted public key")) {
+      throw e;
+    }
+    throw new Error("Invalid or corrupted public key found for the recipient. They may need to re-register their account.");
+  }
 }
 
 /**
  * Decrypts an encrypted file key using the recipient's private RSA key.
  */
 export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwkString) {
-  const privateKey = await importPrivateKey(myPrivateKeyJwkString);
-  const encryptedBytes = hexToBytes(encryptedFileKeyHex);
-  const decrypted = await window.crypto.subtle.decrypt(
-    { name: "RSA-OAEP" },
-    privateKey,
-    encryptedBytes
-  );
-  return new Uint8Array(decrypted);
+  try {
+    const privateKey = await importPrivateKey(myPrivateKeyJwkString);
+    const encryptedBytes = hexToBytes(encryptedFileKeyHex);
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "RSA-OAEP" },
+      privateKey,
+      encryptedBytes
+    );
+    return new Uint8Array(decrypted);
+  } catch (e) {
+    console.error("Web Crypto API decryptFileKeyWithRSA error:", e);
+    if (e.message && e.message.includes("Local RSA Private Key")) {
+      throw e;
+    }
+    throw new Error("Failed to decrypt file key using RSA private key. The key may be corrupted.");
+  }
 }
 
 /**
@@ -401,6 +457,23 @@ export async function decryptFileKeyWithRSA(encryptedFileKeyHex, myPrivateKeyJwk
  */
 export function extractContractErrorReason(err, defaultFallback = "Transaction failed. Please check your wallet balance and network connection.") {
   if (!err) return defaultFallback;
+
+  // Catch Web Crypto API DOMExceptions (e.g. OperationError, DataError)
+  const errName = err?.name || "";
+  const errMessage = err?.message || String(err);
+
+  if (
+    errName === "OperationError" ||
+    errName === "DataError" ||
+    errMessage === "OperationError" ||
+    errMessage.includes("OperationError") ||
+    errMessage.includes("DOMException")
+  ) {
+    if (errMessage.includes("Invalid or corrupted public key")) {
+      return errMessage;
+    }
+    return "Invalid or corrupted public key found for the recipient. They may need to re-register their account.";
+  }
 
   // 1. Direct string error handling
   if (typeof err === "string") {
@@ -417,7 +490,6 @@ export function extractContractErrorReason(err, defaultFallback = "Transaction f
     }
   }
 
-  const errMessage = err?.message || String(err);
   const shortMsg = err?.shortMessage || "";
   
   // Safe stringification for non-Error object properties

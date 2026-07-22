@@ -206,6 +206,12 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
         throw new Error(err.response?.data?.message || "Recipient has not registered their encryption key yet. Tell them to sign in to SevenSeas Drive at least once!");
       }
 
+      if (!recipientPubKey || typeof recipientPubKey !== "string" || !recipientPubKey.trim()) {
+        throw new Error("Invalid or corrupted public key found for the recipient. They may need to re-register their account.");
+      }
+
+      recipientPubKey = recipientPubKey.trim();
+
       // 2. Decrypt symmetric file key locally using owner's keys
       console.log("🔒 [KeyExchange] Extracting raw symmetric key of the file...");
       if (!file.encryptedKey || file.encryptedKey === "unencrypted") {
