@@ -119,19 +119,20 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       return;
     }
 
-    if (!resolvedAddress) {
+    const finalAddress = (resolvedAddress || targetAddress || "").trim();
+
+    if (!finalAddress) {
       setErrorMessage("Invalid ENS name or address.");
       return;
     }
 
-    const normalizedTarget = resolvedAddress.toLowerCase().trim();
-    
     // Strict pre-validation of target address
-    if (!ethers.isAddress(normalizedTarget)) {
+    if (!ethers.isAddress(finalAddress)) {
       setErrorMessage("Invalid Ethereum address. Please check the resolved ENS or wallet address.");
       return;
     }
 
+    const normalizedTarget = finalAddress.toLowerCase();
     const ownerAddress = user?.walletAddress?.toLowerCase();
 
     // Prevent sharing with oneself
@@ -187,8 +188,8 @@ export default function ShareModal({ isOpen, onClose, file, onShareSuccess }) {
       });
 
       // 5. Fire blockchain transaction to record the permission in the on-chain ACL
-      console.log(`⛓️ [KeyExchange] Registering share permission on-chain: File ${file.fileName} -> Wallet ${normalizedTarget}...`);
-      const receipt = await shareFileOnChain(Number(file.id), normalizedTarget);
+      console.log(`⛓️ [KeyExchange] Registering share permission on-chain: File ${file.fileName} -> Wallet ${finalAddress}...`);
+      const receipt = await shareFileOnChain(Number(file.id), finalAddress);
       
       console.log("🎉 Share transaction confirmed:", receipt.hash);
       setSuccessMessage(`Access successfully granted to: ${targetAddress.slice(0,6)}...${targetAddress.slice(-4)}`);
